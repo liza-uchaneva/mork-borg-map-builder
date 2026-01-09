@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { TrackballControls } from 'three/addons/controls/TrackballControls.js';
+import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
 const app = document.querySelector<HTMLDivElement>("#app")!;
 app.style.width = "100vw";
@@ -30,25 +30,11 @@ const ISO_TILT = Math.atan(Math.sqrt(2)); // ~54.7356°
 const CAMERA_DISTANCE = 35;
 
 const target = new THREE.Vector3(0, 0, 0);
-const controls = new TrackballControls(camera, renderer.domElement);
+let controls = new OrbitControls(camera, renderer.domElement) as any
+controls.update()
+controls.addEventListener('change', renderer)
 
-// --- Controls tuning (important) ---
-controls.rotateSpeed = 10.0;          // 🔒 lock rotation
-controls.zoomSpeed = 1.2;
-controls.panSpeed = 0.8;
-
-controls.noRotate = true;          // 🔒 no free rotation
-controls.noZoom = false;
-controls.noPan = false;
-
-controls.staticMoving = true;      // snappy editor feel
-controls.dynamicDampingFactor = 0.15;
-
-// Keep map center as focus
-controls.target.set(0, 0, 0);
-controls.update();
-
-  controls.rotateSpeed = 10.0;
+controls.rotateSpeed = 10.0;
 // Set distance, then apply “iso” rotation
 const y = CAMERA_DISTANCE * Math.sin(ISO_TILT);
 const xz = CAMERA_DISTANCE * Math.cos(ISO_TILT);
@@ -164,7 +150,6 @@ function resize() {
   camera.aspect = w / h;
   camera.updateProjectionMatrix();
 
-  controls.handleResize();
 }
 
 window.addEventListener("resize", resize);
@@ -173,7 +158,6 @@ camera.position.y = Math.max(camera.position.y, 5);
 
 // --- Render loop ---
 function tick() {
-  controls.update();
   renderer.render(scene, camera);
   requestAnimationFrame(tick);
 }
