@@ -18,32 +18,27 @@ renderer.setSize(app.clientWidth, app.clientHeight);
 app.appendChild(renderer.domElement);
 
 // --- Camera (perspective, iso-like) ---
-const camera = new THREE.PerspectiveCamera(
-  35,
-  app.clientWidth / app.clientHeight,
-  0.1,
-  1000
-);
+const camera = new THREE.PerspectiveCamera(35, app.clientWidth / app.clientHeight, 0.1, 1000);
 
 const ISO_Y = Math.PI / 4; // 45°
 const ISO_TILT = Math.atan(Math.sqrt(2)); // ~54.7356°
 const CAMERA_DISTANCE = 35;
 
 const target = new THREE.Vector3(0, 0, 0);
-let controls = new OrbitControls(camera, renderer.domElement) as any
-controls.update()
-controls.addEventListener('change', renderer)
+
+// NOTE: you don't need `as any` here; OrbitControls is typed.
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.copy(target);
+controls.update();
 
 controls.rotateSpeed = 10.0;
-// Set distance, then apply “iso” rotation
+
+// Set distance, then apply “iso” placement
 const y = CAMERA_DISTANCE * Math.sin(ISO_TILT);
 const xz = CAMERA_DISTANCE * Math.cos(ISO_TILT);
-camera.position.set(
-  xz * Math.cos(ISO_Y),
-  y,
-  xz * Math.sin(ISO_Y)
-);
+camera.position.set(xz * Math.cos(ISO_Y), y, xz * Math.sin(ISO_Y));
 camera.lookAt(target);
+
 // --- Lights ---
 scene.add(new THREE.AmbientLight(0xffffff, 0.7));
 const dir = new THREE.DirectionalLight(0xffffff, 0.9);
@@ -67,17 +62,11 @@ ground.name = "ground";
 scene.add(ground);
 
 // --- Grid helper (visual only) ---
-const grid = new THREE.GridHelper(
-  GRID_SIZE * TILE,
-  GRID_SIZE,
-  0x2b2b3a,
-  0x1c1c28
-);
+const grid = new THREE.GridHelper(GRID_SIZE * TILE, GRID_SIZE, 0x2b2b3a, 0x1c1c28);
 (grid.material as THREE.Material).transparent = true;
 (grid.material as THREE.Material).opacity = 0.35;
-grid.position.y = 0.01; // <— prevents z-fighting with the ground plane
+grid.position.y = 0.01; // prevents z-fighting with the ground plane
 scene.add(grid);
-
 
 // --- Hover “ghost” tile ---
 const ghostMat = new THREE.MeshStandardMaterial({
@@ -92,6 +81,16 @@ scene.add(ghost);
 // --- Placed tiles group ---
 const placed = new THREE.Group();
 scene.add(placed);
+
+// --- Map state (key -> mesh) ---
+type TileKey = string;
+
+function keyFromPos(pos: THREE.Vector3): TileKey {
+  // use snapped center coords (stable enough for now)
+  return `${pos.x.toFixed(3)},${pos.z.toFixed(3)}`;
+}
+
+const tileState = new Map<TileKey, THREE.Mesh>();
 
 // --- Raycasting ---
 const raycaster = new THREE.Raycaster();
@@ -126,6 +125,9 @@ function updateHover(ev: PointerEvent) {
 function placeTile() {
   if (!ghost.visible) return;
 
+  const key = keyFromPos(ghost.position);
+  if (tileState.has(key)) return; // prevent duplicates
+
   const tile = new THREE.Mesh(
     new THREE.BoxGeometry(TILE, TILE, TILE),
     new THREE.MeshStandardMaterial({ color: 0x8a8a9a, roughness: 1 })
@@ -133,12 +135,36 @@ function placeTile() {
 
   tile.position.copy(ghost.position);
   placed.add(tile);
+  tileState.set(key, tile);
+}
+
+function deleteTileAtGhost() {
+  if (!ghost.visible) return;
+
+  const key = keyFromPos(ghost.position);
+  const tile = tileState.get(key);
+  if (!tile) return;
+
+  placed.remove(tile);
+
+  // good hygiene (optional, but recommended)
+  tile.geometry.dispose();
+  (tile.material as THREE.Material).dispose();
+
+  tileState.delete(key);
 }
 
 // --- Pointer events ---
 renderer.domElement.addEventListener("pointermove", updateHover);
-renderer.domElement.addEventListener("pointerdown", (ev) => {
-  if (ev.button === 0) placeTile();
+
+// prevent the browser right-click menu
+renderer.domElement.addEventListener("contextmenu", (ev: MouseEvent) => {
+  ev.preventDefault();
+});
+
+renderer.domElement.addEventListener("pointerdown", (ev: PointerEvent) => {
+  if (ev.button === 0) placeTile();        // left click
+  if (ev.button === 2) deleteTileAtGhost(); // right click
 });
 
 // --- Resize ---
@@ -149,15 +175,16 @@ function resize() {
   renderer.setSize(w, h);
   camera.aspect = w / h;
   camera.updateProjectionMatrix();
-
 }
 
 window.addEventListener("resize", resize);
 resize();
+
 camera.position.y = Math.max(camera.position.y, 5);
 
 // --- Render loop ---
 function tick() {
+  controls.update();
   renderer.render(scene, camera);
   requestAnimationFrame(tick);
 }

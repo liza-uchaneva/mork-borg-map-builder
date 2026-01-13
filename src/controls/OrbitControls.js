@@ -478,10 +478,6 @@ var OrbitControls = function (object, domElement) {
     scope.update()
   }
 
-  function handleMouseUp(/*event*/) {
-    // no-op
-  }
-
   function handleMouseWheel(event) {
     if (event.deltaY < 0) {
       dollyIn(getZoomScale())
@@ -633,9 +629,9 @@ var OrbitControls = function (object, domElement) {
     if (scope.enableRotate) handleTouchMoveRotate(event)
   }
 
-  function handleTouchEnd(/*event*/) {
-    // no-op
-  }
+  // function handleTouchEnd(/*event*/) {
+  //   // no-op
+  // }
 
   //
   // event handlers - FSM: listen for events and reset state
@@ -756,18 +752,6 @@ var OrbitControls = function (object, domElement) {
     }
   }
 
-  function onMouseUp(event) {
-    if (scope.enabled === false) return
-
-    handleMouseUp(event)
-
-    scope.domElement.ownerDocument.removeEventListener('mousemove', onMouseMove, false)
-    scope.domElement.ownerDocument.removeEventListener('mouseup', onMouseUp, false)
-
-    scope.dispatchEvent(endEvent)
-
-    state = STATE.NONE
-  }
 
   function onMouseWheel(event) {
     if (
@@ -908,15 +892,15 @@ var OrbitControls = function (object, domElement) {
     }
   }
 
-  function onTouchEnd(event) {
-    if (scope.enabled === false) return
+  // function onTouchEnd(event) {
+  //   if (scope.enabled === false) return
 
-    handleTouchEnd(event)
+  //   handleTouchEnd(event)
 
-    scope.dispatchEvent(endEvent)
+  //   scope.dispatchEvent(endEvent)
 
-    state = STATE.NONE
-  }
+  //   state = STATE.NONE
+  // }
 
   function onContextMenu(event) {
     if (scope.enabled === false) return
@@ -928,11 +912,11 @@ var OrbitControls = function (object, domElement) {
 
   scope.domElement.addEventListener('contextmenu', onContextMenu, false)
 
-  scope.domElement.addEventListener('mousedown', onMouseDown, false)
+  // scope.domElement.addEventListener('mousedown', onMouseDown, false)
   scope.domElement.addEventListener('wheel', onMouseWheel, false)
 
-  scope.domElement.addEventListener('touchstart', onTouchStart, false)
-  scope.domElement.addEventListener('touchend', onTouchEnd, false)
+  // scope.domElement.addEventListener('touchstart', onTouchStart, false)
+  // scope.domElement.addEventListener('touchend', onTouchEnd, false)
   scope.domElement.addEventListener('touchmove', onTouchMove, false)
 
   scope.domElement.addEventListener('keydown', onKeyDown, false)
