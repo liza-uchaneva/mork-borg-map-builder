@@ -5,9 +5,178 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>mork-iso-builder</title>
+
+    <style>
+      body {
+        margin: 0;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+          Roboto, sans-serif;
+        background: #0b0b0f;
+      }
+
+      #instructions {
+        position: fixed;
+        left: 12px;
+        bottom: 12px;
+        max-width: 260px;
+        padding: 12px 14px;
+        background: rgba(15, 15, 25, 0.85);
+        color: #e5e5e5;
+        font-size: 13px;
+        line-height: 1.5;
+        border-radius: 8px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+        backdrop-filter: blur(6px);
+      }
+
+      #instructions h3 {
+        margin: 0 0 6px 0;
+        font-size: 14px;
+        font-weight: 600;
+        color: #fff;
+      }
+
+      #instructions ul {
+        margin: 0;
+        padding-left: 16px;
+      }
+
+      #instructions li {
+        margin-bottom: 4px;
+      }
+
+      #instructions .hint {
+        margin-top: 6px;
+        font-size: 12px;
+        color: #aaa;
+      }
+
+      #ui {
+        position: fixed;
+        top: 12px;
+        left: 12px;
+        width: 260px;
+        padding: 12px;
+        border-radius: 10px;
+        background: rgba(15, 15, 25, 0.85);
+        color: #eaeaea;
+        font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+        font-size: 13px;
+        backdrop-filter: blur(6px);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+        user-select: none;
+      }
+
+      #ui label {
+        display: grid;
+        gap: 4px;
+        margin-bottom: 10px;
+      }
+
+      #ui select,
+      #ui input {
+        width: 100%;
+        padding: 6px 8px;
+        border-radius: 8px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: rgba(0, 0, 0, 0.35);
+        color: #fff;
+        outline: none;
+      }
+
+      /* Range layout */
+      .range-row {
+        display: grid;
+        grid-template-columns: 20px 1fr 34px;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 10px;
+      }
+
+      .range-row .tag {
+        font-weight: 600;
+        color: #fff;
+      }
+
+      .range-row output {
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+        color: #ddd;
+      }
+
+      /* Optional: make range look nicer */
+      #ui input[type="range"] {
+        padding: 0;
+        height: 22px;
+        background: transparent;
+        border: none;
+      }
+    </style>
   </head>
+
   <body>
     <div id="app"></div>
+
+    <div id="ui">
+      <label>
+        Shape
+        <select id="shape">
+          <option value="box" selected>Box</option>
+        </select>
+      </label>
+
+      <div class="range-row">
+        <span class="tag">W</span>
+        <input id="w" type="range" min="1" max="15" value="3" />
+        <output id="wVal">3</output>
+      </div>
+
+      <div class="range-row">
+        <span class="tag">D</span>
+        <input id="d" type="range" min="1" max="15" value="3" />
+        <output id="dVal">3</output>
+      </div>
+
+      <div class="range-row">
+        <span class="tag">H</span>
+        <input id="h" type="range" min="1" max="15" value="2" />
+        <output id="hVal">2</output>
+      </div>
+    </div>
+
+    <div id="instructions">
+      <h3>Controls</h3>
+      <ul>
+        <li><b>L click</b> — place block</li>
+        <li><b>R click</b> — delete block at level</li>
+        <li><b>Shift + Right click</b> — delete top block</li>
+        <li><b>Mouse drag</b> — rotate / pan camera</li>
+        <li><b>Scroll</b> — zoom</li>
+        <li><b>Q / E</b> — change height level</li>
+      </ul>
+      <div class="hint">Auto-stack places blocks upward from the selected level</div>
+    </div>
+
+    <!-- tiny helper so the numbers update next to the sliders -->
+    <script>
+      const w = document.getElementById("w");
+      const d = document.getElementById("d");
+      const h = document.getElementById("h");
+      const wVal = document.getElementById("wVal");
+      const dVal = document.getElementById("dVal");
+      const hVal = document.getElementById("hVal");
+
+      function sync() {
+        wVal.textContent = w.value;
+        dVal.textContent = d.value;
+        hVal.textContent = h.value;
+      }
+      w.addEventListener("input", sync);
+      d.addEventListener("input", sync);
+      h.addEventListener("input", sync);
+      sync();
+    </script>
+
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

@@ -20,20 +20,16 @@ app.appendChild(renderer.domElement);
 // --- Camera (perspective, iso-like) ---
 const camera = new THREE.PerspectiveCamera(35, app.clientWidth / app.clientHeight, 0.1, 1000);
 
-const ISO_Y = Math.PI / 4; // 45°
-const ISO_TILT = Math.atan(Math.sqrt(2)); // ~54.7356°
+const ISO_Y = Math.PI / 4;
+const ISO_TILT = Math.atan(Math.sqrt(2));
 const CAMERA_DISTANCE = 35;
 
 const target = new THREE.Vector3(0, 0, 0);
 
-// NOTE: you don't need `as any` here; OrbitControls is typed.
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.target.copy(target);
 controls.update();
 
-controls.rotateSpeed = 10.0;
-
-// Set distance, then apply “iso” placement
 const y = CAMERA_DISTANCE * Math.sin(ISO_TILT);
 const xz = CAMERA_DISTANCE * Math.cos(ISO_TILT);
 camera.position.set(xz * Math.cos(ISO_Y), y, xz * Math.sin(ISO_Y));
@@ -45,56 +41,107 @@ const dir = new THREE.DirectionalLight(0xffffff, 0.9);
 dir.position.set(10, 20, 10);
 scene.add(dir);
 
-// --- Ground plane for picking ---
-const TILE = 1;
+// --- UI for tile size ---
+const uiW = document.querySelector<HTMLInputElement>("#w")!;
+const uiD = document.querySelector<HTMLInputElement>("#d")!;
+const uiH = document.querySelector<HTMLInputElement>("#h")!;
+
+let TILE_W = Number(uiW.value);
+let TILE_D = Number(uiD.value);
+let TILE_H = Number(uiH.value);
+
 const GRID_SIZE = 30;
 
-const groundGeo = new THREE.PlaneGeometry(GRID_SIZE * TILE, GRID_SIZE * TILE);
-groundGeo.rotateX(-Math.PI / 2);
+function clampPositive(n: number) {
+  // keep it simple: avoid 0 / NaN
+  if (!Number.isFinite(n) || n <= 0) return 1;
+  return n;
+}
 
-const groundMat = new THREE.MeshStandardMaterial({
-  color: 0x111118,
-  roughness: 1,
-});
+function readFromUI() {
+  TILE_W = clampPositive(Number(uiW.value));
+  TILE_D = clampPositive(Number(uiD.value));
+  TILE_H = clampPositive(Number(uiH.value));
 
-const ground = new THREE.Mesh(groundGeo, groundMat);
-ground.name = "ground";
-scene.add(ground);
+  uiW.value = String(TILE_W);
+  uiD.value = String(TILE_D);
+  uiH.value = String(TILE_H);
+}
 
-// --- Grid helper (visual only) ---
-const grid = new THREE.GridHelper(GRID_SIZE * TILE, GRID_SIZE, 0x2b2b3a, 0x1c1c28);
-(grid.material as THREE.Material).transparent = true;
-(grid.material as THREE.Material).opacity = 0.35;
-grid.position.y = 0.01; // prevents z-fighting with the ground plane
-scene.add(grid);
+// --- Ground + grid (rebuilt when tile size changes) ---
+let ground: THREE.Mesh;
+let grid: THREE.GridHelper;
 
-// --- Hover “ghost” tile ---
+function buildGroundAndGrid() {
+  // remove old
+  if (ground) {
+    scene.remove(ground);
+    ground.geometry.dispose();
+    (ground.material as THREE.Material).dispose();
+  }
+  if (grid) {
+    scene.remove(grid);
+    // GridHelper has geometry + material(s)
+    (grid.geometry as THREE.BufferGeometry).dispose();
+    const m = grid.material;
+    if (Array.isArray(m)) m.forEach((mm) => mm.dispose());
+    else (m as THREE.Material).dispose();
+  }
+
+  const worldW = GRID_SIZE;
+  const worldD = GRID_SIZE;
+
+  const groundGeo = new THREE.PlaneGeometry(worldW, worldD);
+  groundGeo.rotateX(-Math.PI / 2);
+
+  const groundMat = new THREE.MeshStandardMaterial({ color: 0x111118, roughness: 1 });
+  ground = new THREE.Mesh(groundGeo, groundMat);
+  ground.name = "ground";
+  scene.add(ground);
+
+  // GridHelper is square, so pick the larger dimension so it covers the whole plane visually
+  const gridSize = Math.max(worldW, worldD);
+  grid = new THREE.GridHelper(gridSize, GRID_SIZE, 0x2b2b3a, 0x1c1c28);
+  (grid.material as THREE.Material).transparent = true;
+  (grid.material as THREE.Material).opacity = 0.35;
+  grid.position.y = 0.01;
+  scene.add(grid);
+}
+
+buildGroundAndGrid();
+
+// --- Ghost ---
 const ghostMat = new THREE.MeshStandardMaterial({
   color: 0xffffff,
   transparent: true,
   opacity: 0.25,
 });
-const ghost = new THREE.Mesh(new THREE.BoxGeometry(TILE, TILE, TILE), ghostMat);
+
+const ghost = new THREE.Mesh(new THREE.BoxGeometry(TILE_W, TILE_H, TILE_D), ghostMat);
 ghost.visible = false;
 scene.add(ghost);
 
-// --- Placed tiles group ---
+function rebuildGhostGeometry() {
+  ghost.geometry.dispose();
+  ghost.geometry = new THREE.BoxGeometry(TILE_W, TILE_H, TILE_D);
+}
+
+// --- Placed tiles ---
 const placed = new THREE.Group();
 scene.add(placed);
 
-// --- Map state (key -> mesh) ---
+// --- State (stacking) ---
+let currentLevel = 0;
+
 type TileKey = string;
-
-function keyFromPos(pos: THREE.Vector3): TileKey {
-  // use snapped center coords (stable enough for now)
-  return `${pos.x.toFixed(3)},${pos.z.toFixed(3)}`;
+function makeKey(gx: number, gz: number, gy: number): TileKey {
+  return `${gx},${gz},${gy}`;
 }
-
 const tileState = new Map<TileKey, THREE.Mesh>();
 
 // --- Raycasting ---
 const raycaster = new THREE.Raycaster();
-const mouseNDC = new THREE.Vector2();
+const mouseNDC = new THREE.Vector2( 1, 1);
 
 function ndcFromEvent(ev: PointerEvent) {
   const rect = renderer.domElement.getBoundingClientRect();
@@ -102,10 +149,33 @@ function ndcFromEvent(ev: PointerEvent) {
   mouseNDC.y = -(((ev.clientY - rect.top) / rect.height) * 2 - 1);
 }
 
-function snapToGrid(p: THREE.Vector3) {
-  const x = Math.floor(p.x / TILE) * TILE + TILE / 2;
-  const z = Math.floor(p.z / TILE) * TILE + TILE / 2;
-  return new THREE.Vector3(x, TILE / 2, z);
+type Snap = { gx: number; gz: number; world: THREE.Vector3 };
+let lastCell: Snap | null = null;
+
+function cellFromPoint(p: THREE.Vector3): Snap {
+  const gx = Math.floor(p.x / TILE_W);
+  const gz = Math.floor(p.z / TILE_D);
+
+  const x = gx * TILE_W + TILE_W / 2;
+  const z = gz * TILE_D + TILE_D / 2;
+  const y = currentLevel * TILE_H + TILE_H / 2;
+
+  return { gx, gz, world: new THREE.Vector3(x, y, z) };
+}
+
+function findTopLevel(gx: number, gz: number): number {
+  let top = -1;
+  for (const k of tileState.keys()) {
+    const [kx, kz, ky] = k.split(",").map(Number);
+    if (kx === gx && kz === gz && ky > top) top = ky;
+  }
+  return top;
+}
+
+function findNextFreeLevel(gx: number, gz: number, startGy: number): number {
+  let gy = startGy;
+  while (tileState.has(makeKey(gx, gz, gy))) gy++;
+  return gy;
 }
 
 function updateHover(ev: PointerEvent) {
@@ -115,72 +185,118 @@ function updateHover(ev: PointerEvent) {
   const hits = raycaster.intersectObject(ground, false);
   if (!hits.length) {
     ghost.visible = false;
+    lastCell = null;
     return;
   }
 
-  ghost.position.copy(snapToGrid(hits[0].point));
+  lastCell = cellFromPoint(hits[0].point);
+  ghost.position.copy(lastCell.world);
   ghost.visible = true;
 }
 
 function placeTile() {
-  if (!ghost.visible) return;
+  if (!ghost.visible || !lastCell) return;
 
-  const key = keyFromPos(ghost.position);
-  if (tileState.has(key)) return; // prevent duplicates
+  const gy = findNextFreeLevel(lastCell.gx, lastCell.gz, currentLevel);
+  const k = makeKey(lastCell.gx, lastCell.gz, gy);
 
   const tile = new THREE.Mesh(
-    new THREE.BoxGeometry(TILE, TILE, TILE),
+    new THREE.BoxGeometry(TILE_W, TILE_H, TILE_D),
     new THREE.MeshStandardMaterial({ color: 0x8a8a9a, roughness: 1 })
   );
 
-  tile.position.copy(ghost.position);
+  tile.position.set(lastCell.world.x, gy * TILE_H + TILE_H / 2, lastCell.world.z);
   placed.add(tile);
-  tileState.set(key, tile);
+  tileState.set(k, tile);
 }
 
-function deleteTileAtGhost() {
-  if (!ghost.visible) return;
+function deleteTileAtLevel() {
+  if (!ghost.visible || !lastCell) return;
 
-  const key = keyFromPos(ghost.position);
-  const tile = tileState.get(key);
+  const k = makeKey(lastCell.gx, lastCell.gz, currentLevel);
+  const tile = tileState.get(k);
   if (!tile) return;
 
   placed.remove(tile);
-
-  // good hygiene (optional, but recommended)
   tile.geometry.dispose();
   (tile.material as THREE.Material).dispose();
+  tileState.delete(k);
+}
 
-  tileState.delete(key);
+function deleteTopmostInColumn() {
+  if (!ghost.visible || !lastCell) return;
+
+  const top = findTopLevel(lastCell.gx, lastCell.gz);
+  if (top < 0) return;
+
+  const k = makeKey(lastCell.gx, lastCell.gz, top);
+  const tile = tileState.get(k);
+  if (!tile) return;
+
+  placed.remove(tile);
+  tile.geometry.dispose();
+  (tile.material as THREE.Material).dispose();
+  tileState.delete(k);
 }
 
 // --- Pointer events ---
 renderer.domElement.addEventListener("pointermove", updateHover);
 
-// prevent the browser right-click menu
 renderer.domElement.addEventListener("contextmenu", (ev: MouseEvent) => {
   ev.preventDefault();
 });
 
 renderer.domElement.addEventListener("pointerdown", (ev: PointerEvent) => {
-  if (ev.button === 0) placeTile();        // left click
-  if (ev.button === 2) deleteTileAtGhost(); // right click
+  if (ev.button === 0) placeTile();
+
+  if (ev.button === 2) {
+    if (ev.shiftKey) deleteTopmostInColumn();
+    else deleteTileAtLevel();
+  }
 });
+
+// --- Level controls (Q/E) ---
+window.addEventListener("keydown", (ev: KeyboardEvent) => {
+  const k = ev.key.toLowerCase();
+  if (k === "q") currentLevel = Math.max(0, currentLevel - 1);
+  if (k === "e") currentLevel = Math.min(50, currentLevel + 1);
+  console.log(currentLevel);
+  if (ghost.visible && lastCell) {
+    ghost.position.set(lastCell.world.x, currentLevel + ghost.geometry.parameters.height / 2, lastCell.world.z);
+  }
+});
+
+// --- UI events ---
+for (const inp of [uiW, uiD, uiH]) {
+  inp.addEventListener("input", () => {
+    readFromUI();
+
+    // rebuild visuals that depend on tile size
+    rebuildGhostGeometry();
+    buildGroundAndGrid();
+
+    // refresh hover position immediately (so ghost snaps correctly after resize)
+    
+    if (ghost.visible && lastCell) {
+      const x = lastCell.gx;
+      const z = lastCell.gz;
+      const y = currentLevel;
+      ghost.position.set(x, y, z);
+      lastCell.world.set(x, y, z);
+    }
+  });
+}
 
 // --- Resize ---
 function resize() {
   const w = app.clientWidth;
   const h = app.clientHeight;
-
   renderer.setSize(w, h);
   camera.aspect = w / h;
   camera.updateProjectionMatrix();
 }
-
 window.addEventListener("resize", resize);
 resize();
-
-camera.position.y = Math.max(camera.position.y, 5);
 
 // --- Render loop ---
 function tick() {
