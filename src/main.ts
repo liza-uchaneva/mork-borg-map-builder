@@ -41,26 +41,34 @@ const dir = new THREE.DirectionalLight(0xffffff, 0.9);
 dir.position.set(10, 20, 10);
 scene.add(dir);
 
-// -------------------- UI (brush size) --------------------
+// -------------------- UI --------------------
+const uiShape = document.querySelector<HTMLSelectElement>("#shape")!;
+const uiStyle = document.querySelector<HTMLSelectElement>("#style")!;
+const uiColor = document.querySelector<HTMLInputElement>("#color")!;
+const uiRot = document.querySelector<HTMLInputElement>("#rot")!;
+
 const uiW = document.querySelector<HTMLInputElement>("#w")!;
 const uiD = document.querySelector<HTMLInputElement>("#d")!;
 const uiH = document.querySelector<HTMLInputElement>("#h")!;
+
+type ShapeId = "box" | "sphere" | "cone" | "cylinder" | "pyramid";
+type StyleId = "solid" | "wire" | "solidWire";
+
+let currentShape: ShapeId = (uiShape.value as ShapeId) || "box";
+let currentStyle: StyleId = (uiStyle.value as StyleId) || "solid";
+let currentColor = new THREE.Color(uiColor.value || "#8a8a9a");
+let currentRotY = THREE.MathUtils.degToRad(Number(uiRot.value || 0));
 
 let TILE_W = Number(uiW.value);
 let TILE_D = Number(uiD.value);
 let TILE_H = Number(uiH.value);
 
-// Field is 30x30 world units, centered at (0,0,0)
+// Ground is a fixed plane: 30 x 30 world units, centered at (0,0,0)
 const GRID_SIZE = 30;
+const HALF = GRID_SIZE / 2;
 
-// Base voxel cell size (do not change unless you redesign the editor)
-const CELL = 1;
-
-// Height levels limit used for capacity (your request)
+// Height level changes by 1 unit with Q/E
 const MAX_LEVELS = 50;
-
-// Instanced capacity = field area * max levels
-const CAPACITY = GRID_SIZE * GRID_SIZE * MAX_LEVELS;
 
 function clampPositiveInt(n: number) {
   if (!Number.isFinite(n) || n <= 0) return 1;
@@ -72,265 +80,213 @@ function readFromUI() {
   TILE_D = clampPositiveInt(Number(uiD.value));
   TILE_H = clampPositiveInt(Number(uiH.value));
 
-  uiW.value = String(TILE_W);
-  uiD.value = String(TILE_D);
-  uiH.value = String(TILE_H);
+  currentShape = (uiShape.value as ShapeId) || "box";
+  currentStyle = (uiStyle.value as StyleId) || "solid";
+  currentColor.set(uiColor.value || "#8a8a9a");
+  currentRotY = THREE.MathUtils.degToRad(Number(uiRot.value || 0));
 }
 
-// -------------------- Ground + grid --------------------
-let ground: THREE.Mesh;
-let grid: THREE.GridHelper;
+// Auto-fill the shape dropdown so you don't need to edit HTML
+function ensureShapeOptions() {
+  const wanted: Array<{ value: ShapeId; label: string }> = [
+    { value: "box", label: "Box" },
+    { value: "sphere", label: "Sphere" },
+    { value: "cone", label: "Cone" },
+    { value: "cylinder", label: "Cylinder" },
+    { value: "pyramid", label: "Pyramid" },
+  ];
 
-function buildGroundAndGrid() {
+  const existing = new Set(Array.from(uiShape.options).map((o) => o.value));
+  for (const it of wanted) {
+    if (existing.has(it.value)) continue;
+    const opt = document.createElement("option");
+    opt.value = it.value;
+    opt.textContent = it.label;
+    uiShape.appendChild(opt);
+  }
+
+  if (!uiShape.value) uiShape.value = "box";
+}
+ensureShapeOptions();
+readFromUI();
+
+// -------------------- Ground --------------------
+let ground!: THREE.Mesh;
+
+function buildGround() {
   if (ground) {
     scene.remove(ground);
     ground.geometry.dispose();
     (ground.material as THREE.Material).dispose();
   }
-  if (grid) {
-    scene.remove(grid);
-    (grid.geometry as THREE.BufferGeometry).dispose();
-    const m = grid.material;
-    if (Array.isArray(m)) m.forEach((mm) => mm.dispose());
-    else (m as THREE.Material).dispose();
-  }
 
-  const worldW = GRID_SIZE;
-  const worldD = GRID_SIZE;
-
-  const groundGeo = new THREE.PlaneGeometry(worldW, worldD);
+  const groundGeo = new THREE.PlaneGeometry(GRID_SIZE, GRID_SIZE);
   groundGeo.rotateX(-Math.PI / 2);
 
   const groundMat = new THREE.MeshStandardMaterial({ color: 0x111118, roughness: 1 });
   ground = new THREE.Mesh(groundGeo, groundMat);
   ground.name = "ground";
   scene.add(ground);
-
-  const gridSize = Math.max(worldW, worldD);
-  grid = new THREE.GridHelper(gridSize, GRID_SIZE, 0x2b2b3a, 0x1c1c28);
-  (grid.material as THREE.Material).transparent = true;
-  (grid.material as THREE.Material).opacity = 0.35;
-  grid.position.y = 0.01;
-  scene.add(grid);
 }
 
-buildGroundAndGrid();
+buildGround();
 
-// -------------------- Ghost (shows brush volume bounds) --------------------
-const ghostMat = new THREE.MeshStandardMaterial({
+// -------------------- Placed objects --------------------
+const placed = new THREE.Group();
+scene.add(placed);
+
+// -------------------- Geometry factory (current shape) --------------------
+function buildGeometryForCurrentShape(): THREE.BufferGeometry {
+  const w = Math.max(1, TILE_W);
+  const d = Math.max(1, TILE_D);
+  const h = Math.max(1, TILE_H);
+
+  const rx = w / 2;
+  const rz = d / 2;
+  const r = Math.max(rx, rz);
+
+  switch (currentShape) {
+    case "box":
+      return new THREE.BoxGeometry(w, h, d);
+
+    case "sphere":
+      return new THREE.SphereGeometry(r, 24, 16);
+
+    case "cone":
+      return new THREE.ConeGeometry(r, h, 24, 1);
+
+    case "cylinder":
+      return new THREE.CylinderGeometry(r, r, h, 24, 1);
+
+    case "pyramid":
+      // 4-sided pyramid
+      return new THREE.ConeGeometry(r, h, 4, 1);
+
+    default:
+      return new THREE.BoxGeometry(w, h, d);
+  }
+}
+
+// -------------------- Materials for styles --------------------
+function makeSolidMaterial(color: THREE.Color) {
+  return new THREE.MeshStandardMaterial({
+    color,
+    roughness: 1,
+  });
+}
+
+function makeTransparentWireMaterial(color: THREE.Color) {
+  // Transparent wireframe is easiest with MeshBasicMaterial + wireframe=true
+  // (it draws triangle edges, not "box edges", but works well for all shapes)
+  return new THREE.MeshBasicMaterial({
+    color,
+    wireframe: true,
+    transparent: true,
+    opacity: 0.55,
+    depthWrite: false,
+  });
+}
+
+function makeEdgeLineMaterial(color: THREE.Color) {
+  // Used for "Solid + Wireframe" overlay (crisper edges than triangle wireframe)
+  return new THREE.LineBasicMaterial({
+    color,
+    transparent: true,
+    opacity: 0.75,
+    depthWrite: false,
+  });
+}
+
+// Build a renderable object for the current style:
+// - solid: Mesh only
+// - wire: Mesh with wireframe material
+// - solidWire: Mesh + wire overlay lines
+function buildStyledObject(geo: THREE.BufferGeometry, color: THREE.Color): THREE.Object3D {
+  if (currentStyle === "solid") {
+    return new THREE.Mesh(geo, makeSolidMaterial(color));
+  }
+
+  if (currentStyle === "wire") {
+    return new THREE.Mesh(geo, makeTransparentWireMaterial(color));
+  }
+
+  // solidWire
+  const g = new THREE.Group();
+
+  const solid = new THREE.Mesh(geo, makeSolidMaterial(color));
+  g.add(solid);
+
+  // Edges overlay: for round shapes it looks "technical", for box it's perfect
+  const edgesGeo = new THREE.EdgesGeometry(geo);
+  const edges = new THREE.LineSegments(edgesGeo, makeEdgeLineMaterial(color));
+  g.add(edges);
+
+  return g;
+}
+
+// -------------------- Ghost (3D preview) --------------------
+const ghostColor = new THREE.Color("#ffffff");
+
+// Ghost is also style-aware (uses current style, but white color)
+let ghostObj: THREE.Object3D = buildStyledObject(buildGeometryForCurrentShape(), ghostColor);
+ghostObj.visible = false;
+scene.add(ghostObj);
+
+function rebuildGhostObject() {
+  // Remove old
+  scene.remove(ghostObj);
+
+  // Dispose old resources
+  ghostObj.traverse((child) => {
+    if (child instanceof THREE.Mesh) {
+      child.geometry.dispose();
+      const mat = child.material;
+      if (Array.isArray(mat)) mat.forEach((m) => m.dispose());
+      else mat.dispose();
+    }
+    if (child instanceof THREE.LineSegments) {
+      child.geometry.dispose();
+      (child.material as THREE.Material).dispose();
+    }
+  });
+
+  // Build new
+  const geo = buildGeometryForCurrentShape();
+  ghostObj = buildStyledObject(geo, ghostColor);
+  ghostObj.visible = false;
+  scene.add(ghostObj);
+}
+
+// -------------------- Projection (2D footprint on ground) --------------------
+const projMat = new THREE.MeshBasicMaterial({
   color: 0xffffff,
   transparent: true,
-  opacity: 0.25,
+  opacity: 0.08,
+  depthWrite: false,
 });
 
-const ghost = new THREE.Mesh(new THREE.BoxGeometry(TILE_W, TILE_H, TILE_D), ghostMat);
-ghost.visible = false;
-scene.add(ghost);
+const projection = new THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial>(
+  new THREE.PlaneGeometry(TILE_W, TILE_D),
+  projMat
+);
+projection.rotation.x = -Math.PI / 2;
+projection.position.y = 0.02;
+projection.visible = false;
+scene.add(projection);
 
-function rebuildGhostGeometry() {
-  ghost.geometry.dispose();
-  ghost.geometry = new THREE.BoxGeometry(TILE_W, TILE_H, TILE_D);
-}
+function rebuildProjectionGeometry() {
+  projection.geometry.dispose();
 
-// -------------------- Instanced voxels state --------------------
-// Each occupied cell => instance index
-type CellKey = string;
-function makeKey(x: number, z: number, y: number): CellKey {
-  return `${x},${z},${y}`;
-}
-function parseKey(key: CellKey): [number, number, number] {
-  const [x, z, y] = key.split(",").map(Number);
-  return [x, z, y];
-}
+  let geo: THREE.BufferGeometry;
 
-const cellToIndex = new Map<CellKey, number>();
-const indexToCell: CellKey[] = [];
-
-// One instanced mesh for all cubes
-const voxelGeo = new THREE.BoxGeometry(CELL, CELL, CELL);
-const voxelMat = new THREE.MeshStandardMaterial({ color: 0x8a8a9a, roughness: 1 });
-const voxels = new THREE.InstancedMesh(voxelGeo, voxelMat, CAPACITY);
-voxels.count = 0;
-scene.add(voxels);
-
-// Helper for writing transforms
-const _mat = new THREE.Matrix4();
-const _pos = new THREE.Vector3();
-const _quat = new THREE.Quaternion();
-const _scl = new THREE.Vector3(1, 1, 1);
-
-// Field bounds in world units (centered)
-const HALF_W = GRID_SIZE / 2;
-const HALF_D = GRID_SIZE / 2;
-
-// Convert world coordinate to voxel grid coordinate, clamped to field
-function worldToVoxelX(x: number) {
-  // voxel centers at integer+0.5; voxel indices are integers in [-HALF .. HALF-1]
-  return Math.floor(x);
-}
-function worldToVoxelZ(z: number) {
-  return Math.floor(z);
-}
-function isInsideField(vx: number, vz: number) {
-  return vx >= -HALF_W && vx < HALF_W && vz >= -HALF_D && vz < HALF_D;
-}
-
-function setInstanceAt(index: number, vx: number, vz: number, vy: number) {
-  // Voxel center in world space
-  _pos.set(vx + 0.5, vy + 0.5, vz + 0.5);
-  _quat.identity();
-  _scl.set(1, 1, 1);
-  _mat.compose(_pos, _quat, _scl);
-  voxels.setMatrixAt(index, _mat);
-}
-
-// Add a voxel if the cell is free
-function addVoxel(vx: number, vz: number, vy: number) {
-  if (!isInsideField(vx, vz)) return;
-
-  const key = makeKey(vx, vz, vy);
-  if (cellToIndex.has(key)) return; // prevent duplicates
-
-  const idx = voxels.count;
-  if (idx >= CAPACITY) {
-    console.warn("InstancedMesh capacity reached; increase CAPACITY.");
-    return;
+  if (currentShape === "sphere" || currentShape === "cone" || currentShape === "cylinder") {
+    const r = Math.max(TILE_W / 2, TILE_D / 2);
+    geo = new THREE.CircleGeometry(r, 48);
+  } else {
+    geo = new THREE.PlaneGeometry(TILE_W, TILE_D);
   }
 
-  setInstanceAt(idx, vx, vz, vy);
-
-  voxels.count++;
-  voxels.instanceMatrix.needsUpdate = true;
-
-  cellToIndex.set(key, idx);
-  indexToCell[idx] = key;
-}
-
-// Remove a voxel by swapping with the last instance
-function removeVoxel(vx: number, vz: number, vy: number) {
-  const key = makeKey(vx, vz, vy);
-  const idx = cellToIndex.get(key);
-  if (idx === undefined) return;
-
-  const last = voxels.count - 1;
-  if (last < 0) return;
-
-  // If removing not-last, move last into removed slot
-  if (idx !== last) {
-    voxels.getMatrixAt(last, _mat);
-    voxels.setMatrixAt(idx, _mat);
-
-    const movedKey = indexToCell[last];
-    cellToIndex.set(movedKey, idx);
-    indexToCell[idx] = movedKey;
-  }
-
-  // Shrink active instances
-  voxels.count = last;
-  voxels.instanceMatrix.needsUpdate = true;
-
-  // Remove mappings
-  cellToIndex.delete(key);
-  indexToCell.pop();
-}
-
-// -------------------- Placement / deletion logic --------------------
-let currentLevel = 0;
-
-// Convert hover (world center) + brush size into voxel ranges
-function getBrushBoundsFromCenter(centerX: number, centerZ: number, baseY: number) {
-  // Anchor brush so it spans exactly TILE_W/TILE_D/TILE_H voxels
-  const startX = Math.floor(centerX - TILE_W / 2);
-  const startZ = Math.floor(centerZ - TILE_D / 2);
-  const startY = baseY;
-
-  return { startX, startZ, startY };
-}
-
-// Delete volume equal to current ghost at the selected level
-function eraseBrushVolumeAtCurrentLevel() {
-  if (!ghost.visible || !lastCell) return;
-
-  const baseY = currentLevel * CELL;
-  const { startX, startZ, startY } = getBrushBoundsFromCenter(lastCell.world.x, lastCell.world.z, baseY);
-
-  for (let y = 0; y < TILE_H; y++) {
-    for (let z = 0; z < TILE_D; z++) {
-      for (let x = 0; x < TILE_W; x++) {
-        removeVoxel(startX + x, startZ + z, startY + y);
-      }
-    }
-  }
-}
-
-// Shift+RightClick: delete topmost single voxel in the column under cursor
-function eraseTopmostInColumn() {
-  if (!ghost.visible || !lastCell) return;
-
-  const vx = worldToVoxelX(lastCell.world.x);
-  const vz = worldToVoxelZ(lastCell.world.z);
-  if (!isInsideField(vx, vz)) return;
-
-  let topY = -Infinity;
-  let topKey: CellKey | null = null;
-
-  // Simple scan (OK for a pet project; optimize later if needed)
-  for (const key of cellToIndex.keys()) {
-    const [kx, kz, ky] = parseKey(key);
-    if (kx === vx && kz === vz && ky > topY) {
-      topY = ky;
-      topKey = key;
-    }
-  }
-
-  if (!topKey) return;
-  const [kx, kz, ky] = parseKey(topKey);
-  removeVoxel(kx, kz, ky);
-}
-
-// Auto-stack: find the first Y level where at least one voxel in the column is free,
-// starting from currentLevel; then place the whole volume (skipping occupied cells).
-function placeBrushVolumeAutoStack() {
-  if (!ghost.visible || !lastCell) return;
-
-  // Compute X/Z brush origin based on hover center
-  const baseX = Math.floor(lastCell.world.x - TILE_W / 2);
-  const baseZ = Math.floor(lastCell.world.z - TILE_D / 2);
-
-  // Start Y from selected level (in voxels)
-  let baseY = currentLevel * CELL;
-
-  // Find next free "baseY" where at least one cell in the first layer is free.
-  // This preserves your editor feeling without adding strict collision rules.
-  // If you want "all cells must be free" later, we can change this check.
-  const MAX_TRIES = MAX_LEVELS;
-  for (let i = 0; i < MAX_TRIES; i++) {
-    let anyFree = false;
-
-    for (let z = 0; z < TILE_D && !anyFree; z++) {
-      for (let x = 0; x < TILE_W && !anyFree; x++) {
-        const vx = baseX + x;
-        const vz = baseZ + z;
-
-        if (!isInsideField(vx, vz)) continue;
-
-        const key = makeKey(vx, vz, baseY);
-        if (!cellToIndex.has(key)) anyFree = true;
-      }
-    }
-
-    if (anyFree) break;
-    baseY += 1; // move up by 1 voxel
-  }
-
-  // Place volume (skip occupied cells, skip out-of-field)
-  for (let y = 0; y < TILE_H; y++) {
-    for (let z = 0; z < TILE_D; z++) {
-      for (let x = 0; x < TILE_W; x++) {
-        addVoxel(baseX + x, baseZ + z, baseY + y);
-      }
-    }
-  }
+  projection.geometry = geo;
 }
 
 // -------------------- Raycasting & hover --------------------
@@ -343,24 +299,65 @@ function ndcFromEvent(ev: PointerEvent) {
   mouseNDC.y = -(((ev.clientY - rect.top) / rect.height) * 2 - 1);
 }
 
-type Snap = { gx: number; gz: number; world: THREE.Vector3 };
-let lastCell: Snap | null = null;
+let currentLevel = 0;
 
-// Keep your existing "grid based on TILE_W/TILE_D" hover logic (no behavior change),
-// but clamp center inside the field so big brushes still behave predictably.
-function cellFromPoint(p: THREE.Vector3): Snap {
-  const gx = Math.floor(p.x / TILE_W);
-  const gz = Math.floor(p.z / TILE_D);
+let hoverX = 0;
+let hoverZ = 0;
+let hasHover = false;
 
-  let x = gx * TILE_W + TILE_W / 2;
-  let z = gz * TILE_D + TILE_D / 2;
+// Clamp based on an axis-aligned footprint (simple & predictable).
+// Note: if you rotate a large rectangle, real footprint becomes larger.
+// This clamp keeps it easy, even if rotated corners could still go out near edges.
+function clampCenterToGround(x: number, z: number) {
+  const halfW = TILE_W / 2;
+  const halfD = TILE_D / 2;
 
-  // Clamp the brush center so the volume does not drift too far outside the field
-  x = THREE.MathUtils.clamp(x, -HALF_W + 0.5, HALF_W - 0.5);
-  z = THREE.MathUtils.clamp(z, -HALF_D + 0.5, HALF_D - 0.5);
+  const r = Math.max(halfW, halfD);
+  const isRound = currentShape === "sphere" || currentShape === "cone" || currentShape === "cylinder";
 
-  const y = currentLevel + TILE_H / 2;
-  return { gx, gz, world: new THREE.Vector3(x, y, z) };
+  const marginX = isRound ? r : halfW;
+  const marginZ = isRound ? r : halfD;
+
+  const minX = -HALF + marginX;
+  const maxX = HALF - marginX;
+  const minZ = -HALF + marginZ;
+  const maxZ = HALF - marginZ;
+
+  return {
+    x: THREE.MathUtils.clamp(x, minX, maxX),
+    z: THREE.MathUtils.clamp(z, minZ, maxZ),
+  };
+}
+
+function currentShapeCenterY(): number {
+  if (currentShape === "sphere") {
+    const r = Math.max(TILE_W / 2, TILE_D / 2);
+    return currentLevel + r;
+  }
+  return currentLevel + TILE_H / 2;
+}
+
+function updateGhostAndProjection() {
+  if (!hasHover) return;
+
+  const yCenter = currentShapeCenterY();
+
+  ghostObj.position.set(hoverX, yCenter, hoverZ);
+  ghostObj.rotation.set(0, currentRotY, 0);
+  ghostObj.visible = true;
+
+  projection.position.set(hoverX, projection.position.y, hoverZ);
+  projection.rotation.z = 0; // keep flat
+  projection.rotation.y = 0;
+  projection.rotation.x = -Math.PI / 2;
+
+  // Rotate the footprint only for rectangular shapes (looks nice)
+  const isRound = currentShape === "sphere" || currentShape === "cone" || currentShape === "cylinder";
+  if (!isRound) {
+    projection.rotation.y = currentRotY;
+  }
+
+  projection.visible = true;
 }
 
 function updateHover(ev: PointerEvent) {
@@ -369,14 +366,65 @@ function updateHover(ev: PointerEvent) {
 
   const hits = raycaster.intersectObject(ground, false);
   if (!hits.length) {
-    ghost.visible = false;
-    lastCell = null;
+    hasHover = false;
+    ghostObj.visible = false;
+    projection.visible = false;
     return;
   }
 
-  lastCell = cellFromPoint(hits[0].point);
-  ghost.position.copy(lastCell.world);
-  ghost.visible = true;
+  const p = hits[0].point;
+  const clamped = clampCenterToGround(p.x, p.z);
+
+  hoverX = clamped.x;
+  hoverZ = clamped.z;
+  hasHover = true;
+
+  updateGhostAndProjection();
+}
+
+// -------------------- Place / delete --------------------
+function placeObject() {
+  if (!hasHover) return;
+
+  const geo = buildGeometryForCurrentShape();
+  const obj = buildStyledObject(geo, currentColor);
+
+  obj.position.set(hoverX, currentShapeCenterY(), hoverZ);
+  obj.rotation.set(0, currentRotY, 0);
+
+  // Store basic info for debugging / future editor actions
+  obj.userData.shape = currentShape;
+  obj.userData.style = currentStyle;
+  obj.userData.color = `#${currentColor.getHexString()}`;
+  obj.userData.rotY = currentRotY;
+
+  placed.add(obj);
+}
+
+function deleteClickedObject(ev: PointerEvent) {
+  ndcFromEvent(ev);
+  raycaster.setFromCamera(mouseNDC, camera);
+
+  const hits = raycaster.intersectObjects(placed.children, true);
+  if (!hits.length) return;
+
+  let obj: THREE.Object3D = hits[0].object;
+  while (obj.parent && obj.parent !== placed) obj = obj.parent;
+
+  placed.remove(obj);
+
+  obj.traverse((child) => {
+    if (child instanceof THREE.Mesh) {
+      child.geometry.dispose();
+      const mat = child.material;
+      if (Array.isArray(mat)) mat.forEach((m) => m.dispose());
+      else mat.dispose();
+    }
+    if (child instanceof THREE.LineSegments) {
+      child.geometry.dispose();
+      (child.material as THREE.Material).dispose();
+    }
+  });
 }
 
 // -------------------- Input --------------------
@@ -387,56 +435,59 @@ renderer.domElement.addEventListener("contextmenu", (ev: MouseEvent) => {
 });
 
 renderer.domElement.addEventListener("pointerdown", (ev: PointerEvent) => {
-  if (ev.button === 0) placeBrushVolumeAutoStack();
-
-  if (ev.button === 2) {
-    if (ev.shiftKey) eraseTopmostInColumn(); // variant B
-    else eraseBrushVolumeAtCurrentLevel();   // delete volume equal to ghost
-  }
+  if (ev.button === 0) placeObject();
+  if (ev.button === 2) deleteClickedObject(ev);
 });
 
 // -------------------- Level controls (Q/E) --------------------
 window.addEventListener("keydown", (ev: KeyboardEvent) => {
   const active = document.activeElement;
-  if (active instanceof HTMLInputElement || 
-      active instanceof HTMLSelectElement || 
-      active instanceof HTMLTextAreaElement) {
+  if (
+    active instanceof HTMLInputElement ||
+    active instanceof HTMLSelectElement ||
+    active instanceof HTMLTextAreaElement
+  ) {
     active.blur();
   }
 
   if (ev.code === "KeyQ") {
     ev.preventDefault();
     currentLevel = Math.max(0, currentLevel - 1);
+    updateGhostAndProjection();
   }
 
   if (ev.code === "KeyE") {
     ev.preventDefault();
     currentLevel = Math.min(MAX_LEVELS, currentLevel + 1);
-  }
-
-  if (ghost.visible && lastCell) {
-    const newY = currentLevel + TILE_H / 2;
-    ghost.position.set(lastCell.world.x, newY, lastCell.world.z);
-    lastCell.world.y = newY;
+    updateGhostAndProjection();
   }
 });
 
-
 // -------------------- UI events --------------------
-for (const inp of [uiW, uiD, uiH]) {
-  inp.addEventListener("input", () => {
-    readFromUI();
-    rebuildGhostGeometry();
-    buildGroundAndGrid();
+function onUiChanged() {
+  readFromUI();
 
-    // Keep ghost position consistent after resizing brush
-    if (ghost.visible && lastCell) {
-      const y = currentLevel * TILE_H + TILE_H / 2;
-      ghost.position.set(lastCell.world.x, y, lastCell.world.z);
-      lastCell.world.y = y;
-    }
-  });
+  rebuildGhostObject();
+  rebuildProjectionGeometry();
+
+  if (hasHover) {
+    const clamped = clampCenterToGround(hoverX, hoverZ);
+    hoverX = clamped.x;
+    hoverZ = clamped.z;
+    updateGhostAndProjection();
+  }
 }
+
+uiShape.addEventListener("change", onUiChanged);
+uiStyle.addEventListener("change", onUiChanged);
+uiColor.addEventListener("input", onUiChanged);
+uiRot.addEventListener("input", onUiChanged);
+for (const inp of [uiW, uiD, uiH]) {
+  inp.addEventListener("input", onUiChanged);
+}
+
+// Initial build for projection + ghost
+rebuildProjectionGeometry();
 
 // -------------------- Resize --------------------
 function resize() {

@@ -121,7 +121,11 @@
       <label>
         Shape
         <select id="shape">
-          <option value="box" selected>Box</option>
+          <option value="box">Box</option>
+          <option value="sphere">Sphere</option>
+          <option value="cone">Cone</option>
+          <option value="cylinder">Cylinder</option>
+          <option value="pyramid">Pyramid</option>
         </select>
       </label>
 
@@ -142,19 +146,36 @@
         <input id="h" type="range" min="1" max="15" value="2" />
         <output id="hVal">2</output>
       </div>
+      <label>
+        Style
+        <select id="style">
+          <option value="solid" selected>Solid</option>
+          <option value="wire">Wireframe</option>
+          <option value="solidWire">Solid + Wireframe</option>
+        </select>
+      </label>
+
+      <label>
+        Color
+        <input id="color" type="color" value="#8a8a9a" />
+      </label>
+
+      <div class="range-row">
+        <span class="tag">Rot</span>
+        <input id="rot" type="range" min="0" max="360" value="0" />
+        <output id="rotVal">0</output>
+      </div>
     </div>
 
     <div id="instructions">
       <h3>Controls</h3>
       <ul>
         <li><b>L click</b> — place block</li>
-        <li><b>R click</b> — delete block at level</li>
-        <li><b>Shift + Right click</b> — delete top block</li>
+        <li><b>R click</b> — delete block</li>
         <li><b>Mouse drag</b> — rotate / pan camera</li>
         <li><b>Scroll</b> — zoom</li>
         <li><b>Q / E</b> — change height level</li>
       </ul>
-      <div class="hint">Auto-stack places blocks upward from the selected level</div>
     </div>
 
     <!-- tiny helper so the numbers update next to the sliders -->
@@ -162,20 +183,25 @@
       const w = document.getElementById("w");
       const d = document.getElementById("d");
       const h = document.getElementById("h");
+      const rot = document.getElementById("rot");
       const wVal = document.getElementById("wVal");
       const dVal = document.getElementById("dVal");
       const hVal = document.getElementById("hVal");
+      const rotVal = document.getElementById("rotVal");
 
       function sync() {
         wVal.textContent = w.value;
         dVal.textContent = d.value;
         hVal.textContent = h.value;
+        rotVal.textContent = rot.value;
       }
       w.addEventListener("input", sync);
       d.addEventListener("input", sync);
       h.addEventListener("input", sync);
+      rot.addEventListener("input", sync);
       sync();
     </script>
+
 
     <script type="module" src="/src/main.ts"></script>
   </body>
