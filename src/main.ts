@@ -1,14 +1,13 @@
 import * as THREE from "three";
-import { createScene, addLights } from "./utils/scene";
-import { createCamera, createControls, setupIsoCamera } from "./utils/camera";
-import { buildGround } from "./utils/ground";
+import { createScene, addLights, buildGround, 
+         createCamera, createControls, setupIsoCamera } from "./utils/scene";
+import { buildGeometry } from "./utils/editor";
 import { getUIRefs, ensureShapeOptions, readUI, onUIChange, getAppRoot } from "./utils/ui";
-import { buildGeometry } from "./utils/shapes";
 import { buildStyledObject, calcCenterY, degToRad } from "./utils/placement";
 import { createProjection, rebuildProjection } from "./utils/projection";
 import { createGhost, rebuildGhost } from "./utils/ghost";
 import { createRay, ndcFromEvent, deleteClickedObject, updateHoverFromGroundHit } from "./utils/input";
-import type { AppConfig, HoverState, UIState } from "./utils/types";
+import type { AppConfig, HoverState, UIState } from "./utils/editor";
 
 const cfg: AppConfig = {
   gridSize: 30,

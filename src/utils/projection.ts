@@ -1,6 +1,6 @@
 import * as THREE from "three";
-import type { UIState } from "./types";
-import { isRound } from "./shapes";
+import type { UIState } from "./editor";
+import { isRound } from "./editor";
 
 export function createProjection(): THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial> {
   const mat = new THREE.MeshBasicMaterial({

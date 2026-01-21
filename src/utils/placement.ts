@@ -1,6 +1,6 @@
 import * as THREE from "three";
-import type { StyleId, UIState } from "./types";
-import { makeEdgeLineMaterial, makeSolidMaterial, makeTransparentWireMaterial } from "./materials";
+import type { StyleId, UIState } from "./editor";
+import { makeEdgeLineMaterial, makeSolidMaterial, makeTransparentWireMaterial } from "./editor";
 
 export function buildStyledObject(
   geo: THREE.BufferGeometry,

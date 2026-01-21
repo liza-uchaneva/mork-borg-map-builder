@@ -1,8 +1,8 @@
 import * as THREE from "three";
-import type { UIState } from "./types";
-import { buildGeometry } from "./shapes";
+import type { UIState } from "./editor";
+import { buildGeometry } from "./editor";
 import { buildStyledObject } from "./placement";
-import { disposeObject3D } from "./materials";
+import { disposeObject3D } from "./editor";
 
 export function createGhost(initial: UIState): THREE.Object3D {
   const ghostColor = new THREE.Color("#ffffff");

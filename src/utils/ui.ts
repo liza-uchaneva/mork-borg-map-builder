@@ -1,4 +1,4 @@
-import type { ShapeId, StyleId, UIRefs, UIState } from "./types";
+import type { ShapeId, StyleId, UIRefs, UIState } from "./editor";
 
 function clampPosInt(n: number) {
   if (!Number.isFinite(n) || n <= 0) return 1;
