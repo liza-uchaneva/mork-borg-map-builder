@@ -37,24 +37,29 @@ export function buildStyledObject(
   style: StyleId,
   color: THREE.Color
 ): THREE.Object3D {
+  let obj: THREE.Object3D;
+
   if (style === "solid") {
-    return new THREE.Mesh(geo, makeSolidMaterial(color));
+    obj = new THREE.Mesh(geo, makeSolidMaterial(color));
+  } else if (style === "wire") {
+    obj = new THREE.Mesh(geo, makeWireMaterial(color));
+  } else {
+    // "solidWire"
+    const g = new THREE.Group();
+    const solid = new THREE.Mesh(geo, makeSolidMaterial(color));
+    g.add(solid);
+
+    const edgesGeo = new THREE.EdgesGeometry(geo);
+    const edges = new THREE.LineSegments(edgesGeo, makeEdgeMaterial(color));
+    g.add(edges);
+
+    obj = g;
   }
 
-  if (style === "wire") {
-    return new THREE.Mesh(geo, makeWireMaterial(color));
-  }
+  // Important: mark style so deletion can prioritize correctly
+  obj.userData.style = style;
 
-  // "solidWire"
-  const g = new THREE.Group();
-  const solid = new THREE.Mesh(geo, makeSolidMaterial(color));
-  g.add(solid);
-
-  const edgesGeo = new THREE.EdgesGeometry(geo);
-  const edges = new THREE.LineSegments(edgesGeo, makeEdgeMaterial(color));
-  g.add(edges);
-
-  return g;
+  return obj;
 }
 
 export function calcCenterY(

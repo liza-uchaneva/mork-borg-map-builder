@@ -1,9 +1,27 @@
 import * as THREE from "three";
-import type { HoverState, UIState } from "./types";
+import type { HoverState, UIState, StyleId  } from "./types";
 import { disposeObject3D } from "./editor";
 
 export function createRay(): { raycaster: THREE.Raycaster; mouseNDC: THREE.Vector2 } {
   return { raycaster: new THREE.Raycaster(), mouseNDC: new THREE.Vector2(1, 1) };
+}
+
+function stylePriority(style: unknown): number {
+  // Higher = more important to delete first
+  const s = String(style) as StyleId;
+
+  if (s === "solid") return 3;
+  if (s === "solidWire") return 2;
+  if (s === "wire") return 1;
+
+  // Unknown style -> lowest priority
+  return 0;
+}
+
+function findPlacedRoot(obj: THREE.Object3D, placed: THREE.Group): THREE.Object3D {
+  let cur: THREE.Object3D = obj;
+  while (cur.parent && cur.parent !== placed) cur = cur.parent;
+  return cur;
 }
 
 export function ndcFromEvent(ev: PointerEvent, dom: HTMLElement, out: THREE.Vector2) {
@@ -26,11 +44,27 @@ export function deleteClickedObject(
   const hits = raycaster.intersectObjects(placed.children, true);
   if (!hits.length) return;
 
-  let obj: THREE.Object3D = hits[0].object;
-  while (obj.parent && obj.parent !== placed) obj = obj.parent;
+  // Pick best candidate: higher style priority wins; if tie -> closer wins
+  let bestObj: THREE.Object3D | null = null;
+  let bestPriority = -Infinity;
+  let bestDist = Infinity;
 
-  placed.remove(obj);
-  disposeObject3D(obj);
+  for (const h of hits) {
+    const root = findPlacedRoot(h.object, placed);
+    const pr = stylePriority(root.userData.style);
+
+    // Prefer higher priority; if equal, prefer the closest hit
+    if (pr > bestPriority || (pr === bestPriority && h.distance < bestDist)) {
+      bestObj = root;
+      bestPriority = pr;
+      bestDist = h.distance;
+    }
+  }
+
+  if (!bestObj) return;
+
+  placed.remove(bestObj);
+  disposeObject3D(bestObj);
 }
 
 export function clampCenterToGround(x: number, z: number, s: UIState, half: number) {
