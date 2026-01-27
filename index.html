@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>mork-iso-builder</title>
+    <style>
+    </style>
+    <script type="module" crossorigin src="/mork-iso-builder/assets/index-iJFSGrh1.js"></script>
+    <link rel="stylesheet" crossorigin href="/mork-iso-builder/assets/index-9tb6MnVK.css">
+  </head>
+
+  <body>
+    <div id="app"></div>
+
+    <div id="ui">
+      <label>
+        Shape
+        <select id="shape">
+          <option value="box">Box</option>
+          <option value="sphere">Sphere</option>
+          <option value="cone">Cone</option>
+          <option value="cylinder">Cylinder</option>
+          <option value="pyramid">Pyramid</option>
+        </select>
+      </label>
+
+      <div class="range-row">
+        <span class="tag">W</span>
+        <input id="w" type="range" min="1" max="100" value="3" />
+        <output id="wVal">3</output>
+      </div>
+
+      <div class="range-row">
+        <span class="tag">D</span>
+        <input id="d" type="range" min="1" max="100" value="3" />
+        <output id="dVal">3</output>
+      </div>
+
+      <div class="range-row">
+        <span class="tag">H</span>
+        <input id="h" type="range" min="1" max="100" value="2" />
+        <output id="hVal">2</output>
+      </div>
+      <label>
+        Style
+        <select id="style">
+          <option value="solid" selected>Solid</option>
+          <option value="wire">Wireframe</option>
+          <option value="solidWire">Solid + Wireframe</option>
+        </select>
+      </label>
+
+      <label>
+        Color
+        <input id="color" type="color" value="#8a8a9a" />
+      </label>
+
+     <div class="range-row">
+      <span class="tag">RX</span>
+      <input id="rx" type="range" min="0" max="360" value="0" />
+      <output id="rxVal">0</output>
+    </div>
+
+    <div class="range-row">
+      <span class="tag">RY</span>
+      <input id="ry" type="range" min="0" max="360" value="0" />
+      <output id="ryVal">0</output>
+    </div>
+
+    <div class="range-row">
+      <span class="tag">RZ</span>
+      <input id="rz" type="range" min="0" max="360" value="0" />
+      <output id="rzVal">0</output>
+    </div>
+    </div>
+
+    <div id="instructions">
+      <h3>Controls</h3>
+      <ul>
+        <li><b>L click</b> — place block</li>
+        <li><b>R click</b> — delete block</li>
+        <li><b>Mouse drag</b> — rotate / pan camera</li>
+        <li><b>Scroll</b> — zoom</li>
+        <li><b>Q / E</b> — change height level</li>
+      </ul>
+    </div>
+
+    <!-- tiny helper so the numbers update next to the sliders -->
+    <script>
+      const w = document.getElementById("w");
+      const d = document.getElementById("d");
+      const h = document.getElementById("h");
+
+      const wVal = document.getElementById("wVal");
+      const dVal = document.getElementById("dVal");
+      const hVal = document.getElementById("hVal");
+
+      const rx = document.getElementById("rx");
+      const ry = document.getElementById("ry");
+      const rz = document.getElementById("rz");
+
+      const rxVal = document.getElementById("rxVal");
+      const ryVal = document.getElementById("ryVal");
+      const rzVal = document.getElementById("rzVal");
+
+      function sync() {
+        wVal.textContent = w.value;
+        dVal.textContent = d.value;
+        hVal.textContent = h.value;
+
+        rxVal.textContent = rx.value;
+        ryVal.textContent = ry.value;
+        rzVal.textContent = rz.value;
+      }
+
+      w.addEventListener("input", sync);
+      d.addEventListener("input", sync);
+      h.addEventListener("input", sync);
+
+      rx.addEventListener("input", sync);
+      ry.addEventListener("input", sync);
+      rz.addEventListener("input", sync);
+
+      sync();
+    </script>
+  </body>
+</html>
