@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import type { HoverState, UIState } from "./editor";
+import type { HoverState, UIState } from "./types";
 import { disposeObject3D } from "./editor";
 
 export function createRay(): { raycaster: THREE.Raycaster; mouseNDC: THREE.Vector2 } {

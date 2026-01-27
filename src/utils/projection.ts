@@ -1,6 +1,6 @@
 import * as THREE from "three";
-import type { UIState } from "./editor";
-import { isRound } from "./editor";
+import type { UIState } from "./types";
+import { degToRad } from "./placement";
 
 export function createProjection(): THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial> {
   const mat = new THREE.MeshBasicMaterial({
@@ -22,13 +22,9 @@ export function createProjection(): THREE.Mesh<THREE.BufferGeometry, THREE.MeshB
   return mesh;
 }
 
-export function rebuildProjection(mesh: THREE.Mesh, s: UIState) {
-  mesh.geometry.dispose();
-
-  if (isRound(s.shape)) {
-    const r = Math.max(s.w / 2, s.d / 2);
-    mesh.geometry = new THREE.CircleGeometry(r, 48);
-  } else {
-    mesh.geometry = new THREE.PlaneGeometry(s.w, s.d);
-  }
+export function rebuildProjection(
+  proj: THREE.Mesh,
+  ui: UIState
+) {
+  proj.rotation.set(-Math.PI / 2, degToRad(ui.rotation.y), 0);
 }

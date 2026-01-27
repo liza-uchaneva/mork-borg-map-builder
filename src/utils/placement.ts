@@ -1,6 +1,36 @@
 import * as THREE from "three";
-import type { StyleId, UIState } from "./editor";
-import { makeEdgeLineMaterial, makeSolidMaterial, makeTransparentWireMaterial } from "./editor";
+import type { Rotation, StyleId  } from "./types";
+
+export function degToRad(deg: number): number {
+  return (deg * Math.PI) / 180;
+}
+
+export function applyRotation(obj: THREE.Object3D, rot: Rotation) {
+  obj.rotation.set(degToRad(rot.x), degToRad(rot.y), degToRad(rot.z));
+}
+
+function makeSolidMaterial(color: THREE.Color) {
+  return new THREE.MeshStandardMaterial({ color, roughness: 1 });
+}
+
+function makeWireMaterial(color: THREE.Color) {
+  return new THREE.MeshBasicMaterial({
+    color,
+    wireframe: true,
+    transparent: true,
+    opacity: 0.55,
+    depthWrite: false,
+  });
+}
+
+function makeEdgeMaterial(color: THREE.Color) {
+  return new THREE.LineBasicMaterial({
+    color,
+    transparent: true,
+    opacity: 0.75,
+    depthWrite: false,
+  });
+}
 
 export function buildStyledObject(
   geo: THREE.BufferGeometry,
@@ -10,29 +40,31 @@ export function buildStyledObject(
   if (style === "solid") {
     return new THREE.Mesh(geo, makeSolidMaterial(color));
   }
+
   if (style === "wire") {
-    return new THREE.Mesh(geo, makeTransparentWireMaterial(color));
+    return new THREE.Mesh(geo, makeWireMaterial(color));
   }
 
+  // "solidWire"
   const g = new THREE.Group();
   const solid = new THREE.Mesh(geo, makeSolidMaterial(color));
   g.add(solid);
 
   const edgesGeo = new THREE.EdgesGeometry(geo);
-  const edges = new THREE.LineSegments(edgesGeo, makeEdgeLineMaterial(color));
+  const edges = new THREE.LineSegments(edgesGeo, makeEdgeMaterial(color));
   g.add(edges);
 
   return g;
 }
 
-export function calcCenterY(shape: UIState["shape"], s: UIState, currentLevel: number): number {
+export function calcCenterY(
+  shape: string,
+  h: number,
+  level: number,
+  w: number,
+  d: number
+): number {
   if (shape === "sphere") {
-    const r = Math.max(s.w / 2, s.d / 2);
-    return currentLevel + r;
+    return level + Math.max(w, d) / 2;
   }
-  return currentLevel + s.h / 2;
-}
-
-export function degToRad(deg: number) {
-  return THREE.MathUtils.degToRad(deg);
-}
+  return level + h / 2;}

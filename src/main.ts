@@ -1,64 +1,101 @@
 import * as THREE from "three";
-import { createScene, addLights, buildGround, 
-         createCamera, createControls, setupIsoCamera } from "./utils/scene";
+
+import {
+  createScene,
+  addLights,
+  buildGround,
+  createCamera,
+  createControls,
+  setupIsoCamera,
+} from "./utils/scene";
+
 import { buildGeometry } from "./utils/editor";
-import { getUIRefs, ensureShapeOptions, readUI, onUIChange, getAppRoot } from "./utils/ui";
-import { buildStyledObject, calcCenterY, degToRad } from "./utils/placement";
+
+import {
+  getUIRefs,
+  ensureShapeOptions,
+  readUI,
+  onUIChange,
+  getAppRoot,
+  syncUIOutputs,
+} from "./utils/ui";
+
+import { buildStyledObject, calcCenterY, applyRotation } from "./utils/placement";
+
 import { createProjection, rebuildProjection } from "./utils/projection";
 import { createGhost, rebuildGhost } from "./utils/ghost";
-import { createRay, ndcFromEvent, deleteClickedObject, updateHoverFromGroundHit } from "./utils/input";
-import type { AppConfig, HoverState, UIState } from "./utils/editor";
 
+import {
+  createRay,
+  ndcFromEvent,
+  deleteClickedObject,
+  updateHoverFromGroundHit,
+} from "./utils/input";
+
+import type { AppConfig, HoverState, UIState } from "./utils/types";
+
+// -------------------- Config --------------------
 const cfg: AppConfig = {
-  gridSize: 30,
-  maxLevels: 50,
+  gridSize: 100,
+  maxLevels: 100,
   isoY: Math.PI / 4,
   isoTilt: Math.atan(Math.sqrt(2)),
   cameraDistance: 35,
-}
+};
 
+// -------------------- Scene / renderer --------------------
 const app = getAppRoot();
 const scene = createScene();
 addLights(scene);
 
-// Renderer
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.setSize(app.clientWidth, app.clientHeight);
 app.appendChild(renderer.domElement);
 
-// Camera + controls
+// -------------------- Camera + controls --------------------
 const camera = createCamera(app);
 const target = new THREE.Vector3(0, 0, 0);
 setupIsoCamera(camera, target, cfg);
 const controls = createControls(camera, renderer.domElement, target);
 
-// World
+// -------------------- World --------------------
 const ground = buildGround(scene, cfg.gridSize);
+
 const placed = new THREE.Group();
+placed.name = "placed";
 scene.add(placed);
 
-// UI
+// -------------------- UI --------------------
 const ui = getUIRefs();
 ensureShapeOptions(ui.shape);
+syncUIOutputs(ui);
 
-let uiState: UIState = readUI(ui);
+let uiState = readUI(ui);
 
-// Ghost + projection
-let ghost = createGhost(uiState);
+onUIChange(ui, () => {
+  syncUIOutputs(ui);
+  uiState = readUI(ui);
+  ghost = rebuildGhost(scene, ghost, uiState);
+  rebuildProjection(projection, uiState);
+  applyGhostAndProjection();
+});
+
+// -------------------- Ghost + projection --------------------
+let ghost: THREE.Object3D = createGhost(uiState);
 scene.add(ghost);
 
 const projection = createProjection();
 scene.add(projection);
 rebuildProjection(projection, uiState);
 
-// Hover + raycasting
+// -------------------- Hover / raycasting --------------------
 const hover: HoverState = { hasHover: false, x: 0, z: 0 };
 const { raycaster, mouseNDC } = createRay();
 
 let currentLevel = 0;
 
-// --- Helpers
+// -------------------- Helpers --------------------
 function applyGhostAndProjection() {
   if (!hover.hasHover) {
     ghost.visible = false;
@@ -66,17 +103,16 @@ function applyGhostAndProjection() {
     return;
   }
 
-  const y = calcCenterY(uiState.shape, uiState, currentLevel);
+  const y = calcCenterY(uiState.shape, uiState.h, currentLevel, uiState.w, uiState.d);
   ghost.position.set(hover.x, y, hover.z);
-  ghost.rotation.set(0, degToRad(uiState.rotDeg), 0);
+
+  // Apply full XYZ rotation to ghost (mesh or group)
+  applyRotation(ghost, uiState.rotation);
+
   ghost.visible = true;
 
+  // Projection: follows XZ, rotation handled in rebuildProjection(...)
   projection.position.set(hover.x, projection.position.y, hover.z);
-  projection.rotation.x = -Math.PI / 2;
-  projection.rotation.y = 0;
-
-  const isRound = uiState.shape === "sphere" || uiState.shape === "cone" || uiState.shape === "cylinder";
-  if (!isRound) projection.rotation.y = degToRad(uiState.rotDeg);
   projection.visible = true;
 }
 
@@ -85,16 +121,22 @@ function placeObject() {
 
   const color = new THREE.Color(uiState.colorHex);
   const geo = buildGeometry(uiState.shape, uiState);
+
   const obj = buildStyledObject(geo, uiState.style, color);
 
-  obj.position.set(hover.x, calcCenterY(uiState.shape, uiState, currentLevel), hover.z);
-  obj.rotation.set(0, degToRad(uiState.rotDeg), 0);
+  obj.position.set(
+    hover.x,
+    calcCenterY(uiState.shape, uiState.h, currentLevel, uiState.w, uiState.d),
+    hover.z
+  );
+
+  applyRotation(obj, uiState.rotation);
 
   placed.add(obj);
 }
 
-// --- Hover
-renderer.domElement.addEventListener("pointermove", (ev) => {
+// -------------------- Hover --------------------
+renderer.domElement.addEventListener("pointermove", (ev: PointerEvent) => {
   ndcFromEvent(ev, renderer.domElement, mouseNDC);
   raycaster.setFromCamera(mouseNDC, camera);
 
@@ -111,15 +153,23 @@ renderer.domElement.addEventListener("pointermove", (ev) => {
 
 renderer.domElement.addEventListener("contextmenu", (ev) => ev.preventDefault());
 
-renderer.domElement.addEventListener("pointerdown", (ev) => {
+// -------------------- Click / delete --------------------
+renderer.domElement.addEventListener("pointerdown", (ev: PointerEvent) => {
   if (ev.button === 0) placeObject();
-  if (ev.button === 2) deleteClickedObject(ev, renderer.domElement, raycaster, mouseNDC, camera, placed);
+
+  if (ev.button === 2) {
+    deleteClickedObject(ev, renderer.domElement, raycaster, mouseNDC, camera, placed);
+  }
 });
 
-// --- Keyboard (Q/E)
-window.addEventListener("keydown", (ev) => {
+// -------------------- Keyboard (Q/E) --------------------
+window.addEventListener("keydown", (ev: KeyboardEvent) => {
   const active = document.activeElement;
-  if (active instanceof HTMLInputElement || active instanceof HTMLSelectElement || active instanceof HTMLTextAreaElement) {
+  if (
+    active instanceof HTMLInputElement ||
+    active instanceof HTMLSelectElement ||
+    active instanceof HTMLTextAreaElement
+  ) {
     active.blur();
   }
 
@@ -136,18 +186,18 @@ window.addEventListener("keydown", (ev) => {
   }
 });
 
-// --- UI change handler
+// -------------------- UI change handler --------------------
 onUIChange(ui, () => {
   uiState = readUI(ui);
 
+  // Keep ghost geometry/style in sync with UI changes
   ghost = rebuildGhost(scene, ghost, uiState);
-  rebuildProjection(projection, uiState);
 
-  // Re-apply transforms after rebuild
+  rebuildProjection(projection, uiState);
   applyGhostAndProjection();
 });
 
-// --- Resize
+// -------------------- Resize --------------------
 function resize() {
   const w = app.clientWidth;
   const h = app.clientHeight;
@@ -158,7 +208,7 @@ function resize() {
 window.addEventListener("resize", resize);
 resize();
 
-// --- Loop
+// -------------------- Loop --------------------
 function tick() {
   controls.update();
   renderer.render(scene, camera);
