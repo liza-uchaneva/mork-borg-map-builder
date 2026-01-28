@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import "./style.css";
 
 import {
   createScene,
@@ -32,7 +33,7 @@ import {
   updateHoverFromGroundHit,
 } from "./utils/input";
 
-import type { AppConfig, HoverState, UIState } from "./utils/types";
+import type { AppConfig, HoverState } from "./utils/types";
 
 // -------------------- Config --------------------
 const cfg: AppConfig = {
