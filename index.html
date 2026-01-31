@@ -12,6 +12,9 @@
     <div id="app"></div>
 
     <div id="ui">
+      <button id="playerModeBtn" type="button">
+        Player mode: OFF
+      </button>
       <label>
         Shape
         <select id="shape">
@@ -55,32 +58,38 @@
       </label>
 
      <div class="range-row">
-      <span class="tag">RX</span>
-      <input id="rx" type="range" min="0" max="360" value="0" />
-      <output id="rxVal">0</output>
-    </div>
+        <span class="tag">RX</span>
+        <input id="rx" type="range" min="0" max="360" value="0" />
+        <output id="rxVal">0</output>
+      </div>
 
-    <div class="range-row">
-      <span class="tag">RY</span>
-      <input id="ry" type="range" min="0" max="360" value="0" />
-      <output id="ryVal">0</output>
-    </div>
+      <div class="range-row">
+        <span class="tag">RY</span>
+        <input id="ry" type="range" min="0" max="360" value="0" />
+        <output id="ryVal">0</output>
+      </div>
 
-    <div class="range-row">
-      <span class="tag">RZ</span>
-      <input id="rz" type="range" min="0" max="360" value="0" />
-      <output id="rzVal">0</output>
+      <div class="range-row">
+        <span class="tag">RZ</span>
+        <input id="rz" type="range" min="0" max="360" value="0" />
+        <output id="rzVal">0</output>
+      </div>
+      <div id="saved">
+      <h4>Saved maps</h4>
+      <button id="saveMap">Save current map</button>
+      <div id="savedList"></div>
     </div>
     </div>
 
     <div id="instructions">
       <h3>Controls</h3>
       <ul>
-        <li><b>L click</b> — place block</li>
-        <li><b>R click</b> — delete block</li>
+        <li><b>Left click</b> — place object</li>
+        <li><b>Right click</b> — delete object</li>
         <li><b>Mouse drag</b> — rotate / pan camera</li>
         <li><b>Scroll</b> — zoom</li>
-        <li><b>Q / E</b> — change height level</li>
+        <li><b>Q / E</b> — move object up / down</li>
+        <li><b>Save</b> — store current map in your browser</li>
       </ul>
     </div>
 

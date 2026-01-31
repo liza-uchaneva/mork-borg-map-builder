@@ -25,6 +25,8 @@ export function getUIRefs(): UIRefs {
     ry: qs<HTMLInputElement>("#ry"),
     rz: qs<HTMLInputElement>("#rz"),
 
+    playerModeBtn: qs<HTMLButtonElement>("#playerModeBtn"),
+
     wVal: document.querySelector<HTMLOutputElement>("#wVal"),
     dVal: document.querySelector<HTMLOutputElement>("#dVal"),
     hVal: document.querySelector<HTMLOutputElement>("#hVal"),

@@ -36,12 +36,14 @@ export type UIRefs = {
   ry: HTMLInputElement;
   rz: HTMLInputElement;
 
+  playerModeBtn: HTMLButtonElement;
+
   wVal?: HTMLOutputElement | null;
   dVal?: HTMLOutputElement | null;
   hVal?: HTMLOutputElement | null;
-
   rxVal?: HTMLOutputElement | null;
   ryVal?: HTMLOutputElement | null;
   rzVal?: HTMLOutputElement | null;
 };
+
 

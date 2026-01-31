@@ -21,6 +21,15 @@ import {
   syncUIOutputs,
 } from "./utils/ui";
 
+import {
+  savePlacedToLocalStorage,
+  fetchAllTemplates,
+  fetchTemplate,
+  loadTemplateIntoPlaced,
+  deleteTemplate,
+  tagPlacedObject,
+} from "./utils/lochalstorage";
+
 import { buildStyledObject, calcCenterY, applyRotation } from "./utils/placement";
 
 import { createProjection, rebuildProjection } from "./utils/projection";
@@ -34,6 +43,21 @@ import {
 } from "./utils/input";
 
 import type { AppConfig, HoverState } from "./utils/types";
+
+let isPlayerMode = false;
+
+function setPlayerMode(on: boolean) {
+  isPlayerMode = on;
+
+  document.body.classList.toggle("player-mode", isPlayerMode);
+
+  ui.playerModeBtn.classList.toggle("is-on", isPlayerMode);
+  ui.playerModeBtn.textContent = isPlayerMode ? "Player mode: ON" : "Player mode: OFF";
+
+  // Hide editor helpers in player mode
+  ghost.visible = !isPlayerMode && hover.hasHover;
+  projection.visible = !isPlayerMode && hover.hasHover;
+}
 
 // -------------------- Config --------------------
 const cfg: AppConfig = {
@@ -74,14 +98,6 @@ syncUIOutputs(ui);
 
 let uiState = readUI(ui);
 
-onUIChange(ui, () => {
-  syncUIOutputs(ui);
-  uiState = readUI(ui);
-  ghost = rebuildGhost(scene, ghost, uiState);
-  rebuildProjection(projection, uiState);
-  applyGhostAndProjection();
-});
-
 // -------------------- Ghost + projection --------------------
 let ghost: THREE.Object3D = createGhost(uiState);
 scene.add(ghost);
@@ -95,6 +111,89 @@ const hover: HoverState = { hasHover: false, x: 0, z: 0 };
 const { raycaster, mouseNDC } = createRay();
 
 let currentLevel = 0;
+
+// -------------------- Saved maps panel --------------------
+const saveBtn = document.querySelector<HTMLButtonElement>("#saveMap");
+const savedList = document.querySelector<HTMLDivElement>("#savedList");
+
+function formatDate(ts: number) {
+  const d = new Date(ts);
+  return d.toLocaleString();
+}
+
+function renderSavedList() {
+  if (!savedList) return;
+
+  const templates = fetchAllTemplates();
+
+  if (!templates.length) {
+    savedList.innerHTML = `<div class="saved-empty">No saved maps yet</div>`;
+    return;
+  }
+
+  // newest first
+  templates.sort((a, b) => b.createdAt - a.createdAt);
+
+  savedList.innerHTML = "";
+
+  for (const t of templates) {
+    const row = document.createElement("div");
+    row.className = "saved-row";
+
+    const meta = document.createElement("div");
+    meta.className = "saved-meta";
+    meta.innerHTML = `
+      <div class="saved-name">${t.title}</div>
+      <div class="saved-sub">${t.blocks.length} objects • ${formatDate(t.createdAt)}</div>
+    `;
+
+    const actions = document.createElement("div");
+    actions.className = "saved-actions";
+
+    const openBtn = document.createElement("button");
+    openBtn.type = "button";
+    openBtn.className = "btn btn-open";
+    openBtn.textContent = "Open";
+    openBtn.addEventListener("click", () => {
+      const tpl = fetchTemplate(t.id);
+      if (!tpl) return;
+
+      loadTemplateIntoPlaced(tpl, placed);
+
+      // keep hover ghost correct (optional, but feels nicer)
+      applyGhostAndProjection();
+      renderSavedList();
+    });
+
+    const delBtn = document.createElement("button");
+    delBtn.type = "button";
+    delBtn.className = "btn btn-del";
+    delBtn.textContent = "Delete";
+    delBtn.addEventListener("click", () => {
+      const ok = window.confirm(`Delete "${t.title}"?`);
+      if (!ok) return;
+
+      deleteTemplate(t.id);
+      renderSavedList();
+    });
+
+    actions.appendChild(openBtn);
+    actions.appendChild(delBtn);
+
+    row.appendChild(meta);
+    row.appendChild(actions);
+    savedList.appendChild(row);
+  }
+}
+
+saveBtn?.addEventListener("click", () => {
+  const saved = savePlacedToLocalStorage(placed);
+  if (!saved) return;
+  renderSavedList();
+});
+
+// render at startup
+renderSavedList();
 
 // -------------------- Helpers --------------------
 function applyGhostAndProjection() {
@@ -133,6 +232,9 @@ function placeObject() {
 
   applyRotation(obj, uiState.rotation);
 
+  // IMPORTANT: this is what makes save/load work
+  tagPlacedObject(obj, uiState);
+
   placed.add(obj);
 }
 
@@ -163,6 +265,49 @@ renderer.domElement.addEventListener("pointerdown", (ev: PointerEvent) => {
   }
 });
 
+// -------------------- Save (keyboard shortcuts) --------------------
+window.addEventListener("keydown", (ev: KeyboardEvent) => {
+  if (isPlayerMode) return;
+  // Save: Ctrl/Cmd+S
+  if ((ev.ctrlKey || ev.metaKey) && ev.code === "KeyS") {
+    ev.preventDefault();
+    const saved = savePlacedToLocalStorage(placed);
+    if (saved) {
+      console.log("Saved template:", saved.title, saved.id, `(${saved.blocks.length} blocks)`);
+      renderSavedList();
+    }
+    return;
+  }
+
+  // Load: Ctrl/Cmd+O (asks for template id)
+  if ((ev.ctrlKey || ev.metaKey) && ev.code === "KeyO") {
+    ev.preventDefault();
+
+    const all = fetchAllTemplates();
+    if (!all.length) {
+      alert("No saved templates yet.");
+      return;
+    }
+
+    console.log("Saved templates:");
+    for (const t of all) console.log(`- ${t.title}  (id: ${t.id})  blocks: ${t.blocks.length}`);
+
+    const id = prompt("Paste template id to load (check console for ids):");
+    if (!id) return;
+
+    const tpl = fetchTemplate(id);
+    if (!tpl) {
+      alert("Template not found.");
+      return;
+    }
+
+    const n = loadTemplateIntoPlaced(tpl, placed);
+    console.log(`Loaded: ${tpl.title} (${n} blocks)`);
+    renderSavedList();
+    return;
+  }
+});
+
 // -------------------- Keyboard (Q/E) --------------------
 window.addEventListener("keydown", (ev: KeyboardEvent) => {
   const active = document.activeElement;
@@ -189,13 +334,26 @@ window.addEventListener("keydown", (ev: KeyboardEvent) => {
 
 // -------------------- UI change handler --------------------
 onUIChange(ui, () => {
+  syncUIOutputs(ui);
   uiState = readUI(ui);
 
-  // Keep ghost geometry/style in sync with UI changes
   ghost = rebuildGhost(scene, ghost, uiState);
-
   rebuildProjection(projection, uiState);
+
   applyGhostAndProjection();
+});
+
+ui.playerModeBtn.addEventListener("click", () => {
+  setPlayerMode(!isPlayerMode);
+});
+renderer.domElement.addEventListener("pointerdown", (ev: PointerEvent) => {
+  if (isPlayerMode) return;
+
+  if (ev.button === 0) placeObject();
+
+  if (ev.button === 2) {
+    deleteClickedObject(ev, renderer.domElement, raycaster, mouseNDC, camera, placed);
+  }
 });
 
 // -------------------- Resize --------------------
