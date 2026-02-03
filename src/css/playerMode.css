@@ -38,3 +38,12 @@
   pointer-events: none;
   mix-blend-mode: screen; /* optional */
 }
+
+/* Player mode: keep Player button + Saved maps, hide everything else */
+body.player-mode #editorControls {
+  display: none;
+}
+
+body.player-mode #instructions {
+  display: none;
+}

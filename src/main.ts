@@ -117,10 +117,6 @@ function setPlayerMode(on: boolean) {
   ghost.visible = !isPlayerMode && hover.hasHover;
   projection.visible = !isPlayerMode && hover.hasHover;
 
-  // Optional: if you want to freeze camera in player mode, uncomment:
-  // (OrbitControls supports this)
-  // controls.enabled = !isPlayerMode;
-
   if (!playerOverlay) return;
 
   if (isPlayerMode) {
@@ -129,7 +125,7 @@ function setPlayerMode(on: boolean) {
     if (!vcr) {
       vcr = new VcrOverlay(playerOverlay, {
         fps: 60,
-        blur: 5,
+        blur: 8,
         opacity: 0.2,
         miny: 220,
         miny2: 220,

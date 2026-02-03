@@ -78,33 +78,121 @@ body {
   outline: none;
 }
 
-/* ---------------- Range Inputs ---------------- */
+/* ---------- Range row layout (unchanged, but tightened) ---------- */
 
 .range-row {
   display: grid;
-  grid-template-columns: 20px 1fr 34px;
+  grid-template-columns: 20px 1fr 40px;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 10px;
+  gap: 5px;
+  margin-bottom: 12px;
 }
 
 .range-row .tag {
-  font-weight: 600;
-  color: #fff;
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: #F0F1F3;
 }
 
 .range-row output {
   text-align: right;
+  font-size: 11px;
   font-variant-numeric: tabular-nums;
-  color: #ddd;
+  color: #D3D7DA;
+  opacity: 0.85;
 }
 
-#ui input[type="range"] {
-  padding: 0;
-  height: 22px;
+/* ---------- Base range reset ---------- */
+
+.range-input {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 18px;
   background: transparent;
-  border: none;
+  cursor: pointer;
 }
+
+/* ---------- Track ---------- */
+
+.range-input::-webkit-slider-runnable-track {
+  height: 6px;
+  background: linear-gradient(
+    to right,
+    #D3D7DA var(--range-fill, 0%),
+    #2E2E2E var(--range-fill, 0%)
+  );
+  border-radius: 4px;
+  border: 1px solid #5B5B5B;
+}
+
+.range-input::-moz-range-track {
+  height: 6px;
+  background: #2E2E2E;
+  border-radius: 4px;
+  border: 1px solid #5B5B5B;
+}
+
+/* ---------- Thumb (the fun part) ---------- */
+
+.range-input::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  margin-top: -6px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 30% 30%,
+    #F0F1F3,
+    #D3D7DA 60%,
+    #5B5B5B
+  );
+  border: 1px solid #2E2E2E;
+  box-shadow:
+    0 1px 0 rgba(255,255,255,0.25),
+    0 2px 4px rgba(0,0,0,0.6);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.range-input::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 30% 30%,
+    #F0F1F3,
+    #D3D7DA 60%,
+    #5B5B5B
+  );
+  border: 1px solid #2E2E2E;
+  box-shadow:
+    0 1px 0 rgba(255,255,255,0.25),
+    0 2px 4px rgba(0,0,0,0.6);
+}
+
+/* ---------- Hover / active ---------- */
+
+.range-input:hover::-webkit-slider-thumb {
+  transform: scale(1.1);
+}
+
+.range-input:active::-webkit-slider-thumb {
+  transform: scale(1.2);
+  box-shadow:
+    0 0 0 2px rgba(240,241,243,0.25),
+    0 3px 6px rgba(0,0,0,0.8);
+}
+
+/* ---------- Firefox fill ---------- */
+
+.range-input::-moz-range-progress {
+  height: 6px;
+  background: #D3D7DA;
+  border-radius: 4px;
+}
+
 
 /* ---------------- Saved maps ---------------- */
 
