@@ -104,6 +104,7 @@ let isPlayerMode = false;
 
 const playerOverlay = document.getElementById("playerOverlay") as HTMLDivElement | null;
 let vcr: VcrOverlay | null = null;
+let scanlinesEl: HTMLDivElement | null = null;
 
 function setPlayerMode(on: boolean) {
   isPlayerMode = on;
@@ -132,10 +133,21 @@ function setPlayerMode(on: boolean) {
         num: 20,
       });
     }
+
+    // add scanlines once
+    if (!scanlinesEl) {
+      scanlinesEl = document.createElement("div");
+      scanlinesEl.className = "scanlines";
+      playerOverlay.appendChild(scanlinesEl);
+    }
   } else {
     playerOverlay.classList.remove("is-on");
+
     vcr?.destroy();
     vcr = null;
+
+    scanlinesEl?.remove();
+    scanlinesEl = null;
   }
 }
 

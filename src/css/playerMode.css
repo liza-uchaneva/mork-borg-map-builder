@@ -20,7 +20,7 @@
 .player-overlay {
   position: fixed;
   inset: 0;
-  z-index: 9999;
+  z-index: 9998;
   display: none;
   pointer-events: none; /* VCR is visual-only */
 }
@@ -33,11 +33,41 @@
 .player-overlay .vcr-overlay {
   position: absolute;
   inset: 0;
+  z-index: 9999;
   width: 100%;
   height: 100%;
   pointer-events: none;
-  mix-blend-mode: screen; /* optional */
 }
+/* Scanlines overlay (pure CSS version) */
+.player-overlay .scanlines {
+  position: absolute;
+  inset: 0;
+  z-index: 10000;
+  pointer-events: none;
+
+  background:
+    linear-gradient(
+      to bottom,
+      rgba(255,255,255,0.02) 50%,
+      rgba(0,0,0,0.45) 50%
+    ),
+    linear-gradient(
+      90deg,
+      rgba(255, 0, 0, 0.10),
+      rgba(0, 255, 0, 0.04),
+      rgba(0, 0, 255, 0.10)
+    );
+
+  background-size: 100% 2px, 3px 100%;
+}
+/* .player-overlay .scanlines {
+  animation: scanline-drift 10s linear infinite;
+}
+
+@keyframes scanline-drift {
+  from { background-position: 0 0, 0 0; }
+  to   { background-position: 0 120px, 0 0; }
+} */
 
 /* Player mode: keep Player button + Saved maps, hide everything else */
 body.player-mode #editorControls {
