@@ -17,75 +17,24 @@
   border-color: rgba(140, 255, 200, 0.35);
 }
 
-/* --- Lock UI look in player mode --- */
-body.player-mode #ui select,
-body.player-mode #ui input,
-body.player-mode #ui button:not(#playerModeBtn) {
-  opacity: 0.45;
-  pointer-events: none;
+.player-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: none;
+  pointer-events: none; /* VCR is visual-only */
 }
 
-/* --- VHS overlay: attach to #app so it covers WebGL canvas --- */
-#app {
-  position: relative;
+.player-overlay.is-on {
+  display: block;
 }
 
-/* Noise + scanlines overlay */
-#app::before,
-#app::after {
-  content: "";
+/* injected by VcrOverlay */
+.player-overlay .vcr-overlay {
   position: absolute;
   inset: 0;
+  width: 100%;
+  height: 100%;
   pointer-events: none;
-  opacity: 0;
-  transition: opacity 120ms ease;
-}
-
-/* Scanlines + slight tint */
-#app::before {
-  background:
-    repeating-linear-gradient(
-      to bottom,
-      rgba(255,255,255,0.04) 0px,
-      rgba(255,255,255,0.04) 1px,
-      rgba(0,0,0,0.00) 2px,
-      rgba(0,0,0,0.00) 4px
-    );
-  mix-blend-mode: overlay;
-}
-
-/* Animated noise */
-#app::after {
-  background-image:
-    radial-gradient(rgba(255,255,255,0.08) 1px, transparent 1px);
-  background-size: 3px 3px;
-  mix-blend-mode: overlay;
-  transform: translateZ(0);
-  animation: vhs-noise 110ms steps(2) infinite;
-}
-
-/* Turn overlay on only in player mode */
-body.player-mode #app::before,
-body.player-mode #app::after {
-  opacity: 1;
-}
-
-/* Slight CRT-ish color / wobble on the canvas itself */
-body.player-mode canvas {
-  filter: contrast(1.08) saturate(1.12) brightness(1.03) hue-rotate(-3deg);
-  animation: vhs-wobble 2.2s ease-in-out infinite;
-  transform-origin: center;
-}
-
-@keyframes vhs-noise {
-  0% { transform: translate(0,0); }
-  25% { transform: translate(-1px, 1px); }
-  50% { transform: translate(1px, -1px); }
-  75% { transform: translate(1px, 1px); }
-  100% { transform: translate(0,0); }
-}
-
-@keyframes vhs-wobble {
-  0%, 100% { transform: translateX(0); }
-  50% { transform: translateX(0.6px); }
+  mix-blend-mode: screen; /* optional */
 }

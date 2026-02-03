@@ -26,14 +26,6 @@ export function getUIRefs(): UIRefs {
     rz: qs<HTMLInputElement>("#rz"),
 
     playerModeBtn: qs<HTMLButtonElement>("#playerModeBtn"),
-
-    wVal: document.querySelector<HTMLOutputElement>("#wVal"),
-    dVal: document.querySelector<HTMLOutputElement>("#dVal"),
-    hVal: document.querySelector<HTMLOutputElement>("#hVal"),
-
-    rxVal: document.querySelector<HTMLOutputElement>("#rxVal"),
-    ryVal: document.querySelector<HTMLOutputElement>("#ryVal"),
-    rzVal: document.querySelector<HTMLOutputElement>("#rzVal"),
   };
 }
 

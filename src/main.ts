@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import "./style.css";
+import { VcrOverlay } from "./utils/vcrOverlay";
 
 import {
   createScene,
@@ -44,21 +45,6 @@ import {
 
 import type { AppConfig, HoverState } from "./utils/types";
 
-let isPlayerMode = false;
-
-function setPlayerMode(on: boolean) {
-  isPlayerMode = on;
-
-  document.body.classList.toggle("player-mode", isPlayerMode);
-
-  ui.playerModeBtn.classList.toggle("is-on", isPlayerMode);
-  ui.playerModeBtn.textContent = isPlayerMode ? "Player mode: ON" : "Player mode: OFF";
-
-  // Hide editor helpers in player mode
-  ghost.visible = !isPlayerMode && hover.hasHover;
-  projection.visible = !isPlayerMode && hover.hasHover;
-}
-
 // -------------------- Config --------------------
 const cfg: AppConfig = {
   gridSize: 100,
@@ -68,8 +54,9 @@ const cfg: AppConfig = {
   cameraDistance: 35,
 };
 
-// -------------------- Scene / renderer --------------------
+// -------------------- App root / scene / renderer --------------------
 const app = getAppRoot();
+
 const scene = createScene();
 addLights(scene);
 
@@ -112,6 +99,50 @@ const { raycaster, mouseNDC } = createRay();
 
 let currentLevel = 0;
 
+// -------------------- Player mode + VCR overlay --------------------
+let isPlayerMode = false;
+
+const playerOverlay = document.getElementById("playerOverlay") as HTMLDivElement | null;
+let vcr: VcrOverlay | null = null;
+
+function setPlayerMode(on: boolean) {
+  isPlayerMode = on;
+
+  document.body.classList.toggle("player-mode", isPlayerMode);
+
+  ui.playerModeBtn.classList.toggle("is-on", isPlayerMode);
+  ui.playerModeBtn.textContent = isPlayerMode ? "Player mode: ON" : "Player mode: OFF";
+
+  // Hide editor helpers
+  ghost.visible = !isPlayerMode && hover.hasHover;
+  projection.visible = !isPlayerMode && hover.hasHover;
+
+  // Optional: if you want to freeze camera in player mode, uncomment:
+  // (OrbitControls supports this)
+  // controls.enabled = !isPlayerMode;
+
+  if (!playerOverlay) return;
+
+  if (isPlayerMode) {
+    playerOverlay.classList.add("is-on");
+
+    if (!vcr) {
+      vcr = new VcrOverlay(playerOverlay, {
+        fps: 60,
+        blur: 5,
+        opacity: 0.2,
+        miny: 220,
+        miny2: 220,
+        num: 20,
+      });
+    }
+  } else {
+    playerOverlay.classList.remove("is-on");
+    vcr?.destroy();
+    vcr = null;
+  }
+}
+
 // -------------------- Saved maps panel --------------------
 const saveBtn = document.querySelector<HTMLButtonElement>("#saveMap");
 const savedList = document.querySelector<HTMLDivElement>("#savedList");
@@ -131,9 +162,7 @@ function renderSavedList() {
     return;
   }
 
-  // newest first
   templates.sort((a, b) => b.createdAt - a.createdAt);
-
   savedList.innerHTML = "";
 
   for (const t of templates) {
@@ -160,7 +189,6 @@ function renderSavedList() {
 
       loadTemplateIntoPlaced(tpl, placed);
 
-      // keep hover ghost correct (optional, but feels nicer)
       applyGhostAndProjection();
       renderSavedList();
     });
@@ -192,11 +220,12 @@ saveBtn?.addEventListener("click", () => {
   renderSavedList();
 });
 
-// render at startup
 renderSavedList();
 
 // -------------------- Helpers --------------------
 function applyGhostAndProjection() {
+  if (isPlayerMode) return;
+
   if (!hover.hasHover) {
     ghost.visible = false;
     projection.visible = false;
@@ -206,22 +235,20 @@ function applyGhostAndProjection() {
   const y = calcCenterY(uiState.shape, uiState.h, currentLevel, uiState.w, uiState.d);
   ghost.position.set(hover.x, y, hover.z);
 
-  // Apply full XYZ rotation to ghost (mesh or group)
   applyRotation(ghost, uiState.rotation);
 
   ghost.visible = true;
 
-  // Projection: follows XZ, rotation handled in rebuildProjection(...)
   projection.position.set(hover.x, projection.position.y, hover.z);
   projection.visible = true;
 }
 
 function placeObject() {
+  if (isPlayerMode) return;
   if (!hover.hasHover) return;
 
   const color = new THREE.Color(uiState.colorHex);
   const geo = buildGeometry(uiState.shape, uiState);
-
   const obj = buildStyledObject(geo, uiState.style, color);
 
   obj.position.set(
@@ -231,15 +258,15 @@ function placeObject() {
   );
 
   applyRotation(obj, uiState.rotation);
-
-  // IMPORTANT: this is what makes save/load work
   tagPlacedObject(obj, uiState);
 
   placed.add(obj);
 }
 
-// -------------------- Hover --------------------
+// -------------------- Hover (pointer move) --------------------
 renderer.domElement.addEventListener("pointermove", (ev: PointerEvent) => {
+  if (isPlayerMode) return;
+
   ndcFromEvent(ev, renderer.domElement, mouseNDC);
   raycaster.setFromCamera(mouseNDC, camera);
 
@@ -258,6 +285,8 @@ renderer.domElement.addEventListener("contextmenu", (ev) => ev.preventDefault())
 
 // -------------------- Click / delete --------------------
 renderer.domElement.addEventListener("pointerdown", (ev: PointerEvent) => {
+  if (isPlayerMode) return;
+
   if (ev.button === 0) placeObject();
 
   if (ev.button === 2) {
@@ -265,21 +294,19 @@ renderer.domElement.addEventListener("pointerdown", (ev: PointerEvent) => {
   }
 });
 
-// -------------------- Save (keyboard shortcuts) --------------------
+// -------------------- Keyboard shortcuts + Q/E --------------------
 window.addEventListener("keydown", (ev: KeyboardEvent) => {
   if (isPlayerMode) return;
+
   // Save: Ctrl/Cmd+S
   if ((ev.ctrlKey || ev.metaKey) && ev.code === "KeyS") {
     ev.preventDefault();
     const saved = savePlacedToLocalStorage(placed);
-    if (saved) {
-      console.log("Saved template:", saved.title, saved.id, `(${saved.blocks.length} blocks)`);
-      renderSavedList();
-    }
+    if (saved) renderSavedList();
     return;
   }
 
-  // Load: Ctrl/Cmd+O (asks for template id)
+  // Load: Ctrl/Cmd+O
   if ((ev.ctrlKey || ev.metaKey) && ev.code === "KeyO") {
     ev.preventDefault();
 
@@ -301,15 +328,13 @@ window.addEventListener("keydown", (ev: KeyboardEvent) => {
       return;
     }
 
-    const n = loadTemplateIntoPlaced(tpl, placed);
-    console.log(`Loaded: ${tpl.title} (${n} blocks)`);
+    loadTemplateIntoPlaced(tpl, placed);
     renderSavedList();
+    applyGhostAndProjection();
     return;
   }
-});
 
-// -------------------- Keyboard (Q/E) --------------------
-window.addEventListener("keydown", (ev: KeyboardEvent) => {
+  // Blur inputs so Q/E doesn't type into sliders/selects
   const active = document.activeElement;
   if (
     active instanceof HTMLInputElement ||
@@ -345,15 +370,6 @@ onUIChange(ui, () => {
 
 ui.playerModeBtn.addEventListener("click", () => {
   setPlayerMode(!isPlayerMode);
-});
-renderer.domElement.addEventListener("pointerdown", (ev: PointerEvent) => {
-  if (isPlayerMode) return;
-
-  if (ev.button === 0) placeObject();
-
-  if (ev.button === 2) {
-    deleteClickedObject(ev, renderer.domElement, raycaster, mouseNDC, camera, placed);
-  }
 });
 
 // -------------------- Resize --------------------
