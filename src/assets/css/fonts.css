@@ -1,0 +1,13 @@
+@font-face {
+    font-family: "FuturaLTPro";
+    src: url('../fonts/futura-lt-pro-3-cufonfonts/FuturaLTProMedium.otf') format("truetype");
+    font-weight: normal;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: "FuturaLTProLight";
+    src: url('../fonts/futura-lt-pro-3-cufonfonts/FuturaLTProLight.otf') format("truetype");
+    font-weight: normal;
+    font-style: normal;
+}

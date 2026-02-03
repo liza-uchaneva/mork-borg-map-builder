@@ -1,22 +1,31 @@
 /* --- Player mode button --- */
 #playerModeBtn {
   width: 100%;
-  margin-bottom: 10px;
-  padding: 8px 10px;
-  border-radius: 8px;
-  border: 1px solid rgba(255,255,255,0.12);
-  background: rgba(255,255,255,0.08);
-  color: #fff;
+  margin: 0;
+
+  padding: 10px 12px;
+
+  border-radius: 14px;
+  border: var(--stroke) solid var(--ink);
+
+  background: var(--ink);
+  color: var(--paper);
+
   cursor: pointer;
-}
-#playerModeBtn:hover {
-  background: rgba(255,255,255,0.14);
-}
-#playerModeBtn.is-on {
-  background: rgba(140, 255, 200, 0.14);
-  border-color: rgba(140, 255, 200, 0.35);
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-size: 12px;
 }
 
+#playerModeBtn:hover {
+  background: var(--darkShade);
+}
+
+#playerModeBtn.is-on {
+  background: var(--ink);
+  color: var(--paper);
+}
 .player-overlay {
   position: fixed;
   inset: 0;

@@ -126,8 +126,8 @@ function setPlayerMode(on: boolean) {
     if (!vcr) {
       vcr = new VcrOverlay(playerOverlay, {
         fps: 60,
-        blur: 8,
-        opacity: 0.2,
+        blur: 1,
+        opacity: 0.3,
         miny: 220,
         miny2: 220,
         num: 20,

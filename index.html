@@ -17,67 +17,75 @@
       </button>
 
       <div id="editorControls">
-        <label>
-          Shape
-          <select id="shape">
-            <option value="box">Box</option>
-            <option value="sphere">Sphere</option>
-            <option value="cone">Cone</option>
-            <option value="cylinder">Cylinder</option>
-            <option value="pyramid">Pyramid</option>
-          </select>
-        </label>
-
-        <div class="range-row">
-          <span class="tag">W</span>
-          <input id="w" class="range-input" type="range" min="1" max="100" value="3" />
-          <output id="wVal">3</output>
+        <div>
+          <label>
+            Shape
+            <select id="shape">
+              <option value="box">Box</option>
+              <option value="sphere">Sphere</option>
+              <option value="cone">Cone</option>
+              <option value="cylinder">Cylinder</option>
+              <option value="pyramid">Pyramid</option>
+            </select>
+          </label>
         </div>
 
-        <div class="range-row">
-          <span class="tag">D</span>
-          <input id="d" class="range-input" type="range" min="1" max="100" value="3" />
-          <output id="dVal">3</output>
+        <div>
+            <div class="range-row">
+            <span class="tag">W</span>
+            <input id="w" class="range-input" type="range" min="1" max="100" value="3" />
+            <output id="wVal">3</output>
+          </div>
+
+          <div class="range-row">
+            <span class="tag">D</span>
+            <input id="d" class="range-input" type="range" min="1" max="100" value="3" />
+            <output id="dVal">3</output>
+          </div>
+
+          <div class="range-row">
+            <span class="tag">H</span>
+            <input id="h" class="range-input" type="range" min="1" max="100" value="2" />
+            <output id="hVal">2</output>
+          </div>
+        </div>
+        <div>
+            <label>
+              Style
+              <select id="style">
+                <option value="solid" selected>Solid</option>
+                <option value="wire">Wireframe</option>
+                <option value="solidWire">Solid + Wireframe</option>
+              </select>
+            </label>
+        </div>
+        <div>
+            <label>
+              Color
+              <input id="color" type="color" value="#8a8a9a" />
+            </label>
         </div>
 
-        <div class="range-row">
-          <span class="tag">H</span>
-          <input id="h" class="range-input" type="range" min="1" max="100" value="2" />
-          <output id="hVal">2</output>
+        <div>
+          <div class="range-row">
+            <span class="tag">RX</span>
+            <input id="rx" class="range-input" type="range" min="0" max="360" value="0" />
+            <output id="rxVal">0</output>
+          </div>
+
+          <div class="range-row">
+            <span class="tag">RY</span>
+            <input id="ry" class="range-input" type="range" min="0" max="360" value="0" />
+            <output id="ryVal">0</output>
+          </div>
+
+          <div class="range-row">
+            <span class="tag">RZ</span>
+            <input id="rz" class="range-input" type="range" min="0" max="360" value="0" />
+            <output id="rzVal">0</output>
+          </div>
         </div>
-
-        <label>
-          Style
-          <select id="style">
-            <option value="solid" selected>Solid</option>
-            <option value="wire">Wireframe</option>
-            <option value="solidWire">Solid + Wireframe</option>
-          </select>
-        </label>
-
-        <label>
-          Color
-          <input id="color" type="color" value="#8a8a9a" />
-        </label>
-
-        <div class="range-row">
-          <span class="tag">RX</span>
-          <input id="rx" class="range-input" type="range" min="0" max="360" value="0" />
-          <output id="rxVal">0</output>
         </div>
-
-        <div class="range-row">
-          <span class="tag">RY</span>
-          <input id="ry" class="range-input" type="range" min="0" max="360" value="0" />
-          <output id="ryVal">0</output>
-        </div>
-
-        <div class="range-row">
-          <span class="tag">RZ</span>
-          <input id="rz" class="range-input" type="range" min="0" max="360" value="0" />
-          <output id="rzVal">0</output>
-        </div>
-      </div>
 
       <div id="saved">
         <h4>Saved maps</h4>

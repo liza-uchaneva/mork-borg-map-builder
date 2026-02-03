@@ -1,9 +1,26 @@
-@import "./css/ui.css";
-@import "./css/playerMode.css";
+@import "./assets/css/ui.css";
+@import "./assets/css/playerMode.css";
+@import "./assets/css/fonts.css";
 
 /* Base page */
 :root {
-  color-scheme: dark;
+  --ink: #1f1f1f;
+  --paper: #ffffff;
+  --paper2: #f2f3f4;
+  --shade: #d3d7da;
+  --darkShade: #5b5b5b;
+  
+  --stroke: 2px;          
+  --radius: 16px;          
+  --radius-sm: 10px;
+
+  --line: rgba(0, 0, 0, 0.22);
+  --line2: rgba(0, 0, 0, 0.12);
+  --shadow: 0 10px 0 rgba(0,0,0,0.06); 
+
+  --font-family: "FuturaLTPro";
+  --font-familyLight: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    sans-serif;
 }
 
 html, body {
@@ -12,18 +29,13 @@ html, body {
 
 body {
   margin: 0;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family: var(--font-family);
   background: #0b0b0f;
-  overflow: hidden;
+  color: var(--ink);
 }
 
 /* Three canvas container */
 #app {
   width: 100vw;
   height: 100vh;
-}
-
-/* Optional: prevent text selection in UI */
-#ui, #instructions {
-  user-select: none;
 }
