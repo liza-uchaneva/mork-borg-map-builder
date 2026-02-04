@@ -1,6 +1,8 @@
 @import "./assets/css/ui.css";
 @import "./assets/css/playerMode.css";
 @import "./assets/css/fonts.css";
+@import "./assets/css/insertFrames.css";
+
 
 /* Base page */
 :root {

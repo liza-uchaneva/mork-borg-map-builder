@@ -67,9 +67,107 @@ app.appendChild(renderer.domElement);
 
 // -------------------- Camera + controls --------------------
 const camera = createCamera(app);
-const target = new THREE.Vector3(0, 0, 0);
+const target = new THREE.Vector3(0, 12, 0);
 setupIsoCamera(camera, target, cfg);
 const controls = createControls(camera, renderer.domElement, target);
+
+// -------------------- Extra “inspector” cameras --------------------
+
+const topCam = new THREE.PerspectiveCamera(35, 1, 0.1, 2000);
+topCam.up.set(0, 0, -1); 
+
+const sideCam = new THREE.PerspectiveCamera(35, 1, 0.1, 2000);
+sideCam.up.set(0, 1, 0);
+function renderInset(
+  cameraInset: THREE.PerspectiveCamera,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  clearColor: number
+) {
+  cameraInset.aspect = w / h;
+  cameraInset.updateProjectionMatrix();
+
+  renderer.setViewport(x, y, w, h);
+  renderer.setScissor(x, y, w, h);
+  renderer.setScissorTest(true);
+
+  renderer.setClearColor(clearColor, 1);
+  renderer.clear(true, true, true);
+
+  renderer.render(scene, cameraInset);
+}
+const tmpBox = new THREE.Box3();
+const tmpSize = new THREE.Vector3();
+const tmpCenter = new THREE.Vector3();
+
+function getFocusBounds() {
+  const obj = getFocusObject();
+
+  if (!obj) {
+    return {
+      center: tmpCenter.set(0, 0, 0),
+      radius: 10, 
+    };
+  }
+
+  obj.updateMatrixWorld(true);
+
+  tmpBox.setFromObject(obj);
+
+  if (!isFinite(tmpBox.min.x) || tmpBox.isEmpty()) {
+    obj.getWorldPosition(tmpCenter);
+    return { center: tmpCenter, radius: 10 };
+  }
+
+  tmpBox.getCenter(tmpCenter);
+  tmpBox.getSize(tmpSize);
+  const radius = tmpSize.length() * 0.5;
+
+  return { center: tmpCenter, radius: Math.max(radius, 0.5) };
+}
+
+function distanceToFitSphere(radius: number, fovDeg: number, padding = 1.2) {
+  const fov = THREE.MathUtils.degToRad(fovDeg);
+  return (radius * padding) / Math.tan(fov * 0.5);
+}
+function updateInspectorCameras() {
+  const { center, radius } = getFocusBounds();
+  const look = new THREE.Vector3(center.x, center.y + radius * 0.15, center.z);
+
+  // ---------- TOP CAMERA ----------
+  const topDist = distanceToFitSphere(radius, topCam.fov, 1.25);
+
+  topCam.position.set(look.x, look.y + topDist, look.z);
+  topCam.up.set(0, 0, -1);
+  topCam.near = Math.max(0.1, topDist - radius * 4);
+  topCam.far = topDist + radius * 8 + 500;
+  topCam.lookAt(look);
+  topCam.updateProjectionMatrix();
+  topCam.updateMatrixWorld(true);
+
+  // ---------- SIDE CAMERA ----------
+  // Камера смотрит сбоку, но чуть сверху (чтобы видеть верх объекта и землю).
+  const sideDist = distanceToFitSphere(radius, sideCam.fov, 1.35);
+
+  // направление "сбоку" — по +X (можешь сменить на +Z)
+  const dir = new THREE.Vector3(1, 0, 0);
+
+  // боковая камера: чуть выше, чем центр
+  const sideHeight = radius * 0.6 + 2;
+
+  sideCam.position.copy(look).addScaledVector(dir, sideDist);
+  sideCam.position.y += sideHeight;
+
+  sideCam.up.set(0, 1, 0);
+  sideCam.near = Math.max(0.1, sideDist - radius * 4);
+  sideCam.far = sideDist + radius * 8 + 500;
+  sideCam.lookAt(look);
+  sideCam.updateProjectionMatrix();
+  sideCam.updateMatrixWorld(true);
+}
+
 
 // -------------------- World --------------------
 const ground = buildGround(scene, cfg.gridSize);
@@ -269,6 +367,25 @@ function placeObject() {
   tagPlacedObject(obj, uiState);
 
   placed.add(obj);
+  lastPlaced = obj;
+}
+
+let lastPlaced: THREE.Object3D | null = null;
+
+function getFocusObject(): THREE.Object3D | null {
+  // если есть ховер — следим за ghost (он показывает текущую позицию размещения)
+  if (!isPlayerMode && hover.hasHover) return ghost;
+
+  // иначе — за последним поставленным объектом
+  return lastPlaced;
+}
+
+function getFocusPoint(out = new THREE.Vector3()): THREE.Vector3 {
+  const obj = getFocusObject();
+  if (!obj) return out.set(0, 0, 0);
+
+  obj.getWorldPosition(out);
+  return out;
 }
 
 // -------------------- Hover (pointer move) --------------------
@@ -394,7 +511,24 @@ resize();
 // -------------------- Loop --------------------
 function tick() {
   controls.update();
+  updateInspectorCameras();
+
+  // FULL render (один раз!)
+  renderer.setViewport(0, 0, app.clientWidth, app.clientHeight);
+  renderer.setScissorTest(false);
   renderer.render(scene, camera);
+
+  // Insets
+  const insetW = 220;
+  const insetH = 160;
+  const pad = 12;
+
+  renderInset(topCam, pad, pad, insetW, insetH, 0x102018); // bottom-left
+  renderInset(sideCam, app.clientWidth - insetW - pad, pad, insetW, insetH, 0x201010); // bottom-right
+
+  // важно: выключить scissor после inset’ов
+  renderer.setScissorTest(false);
+
   requestAnimationFrame(tick);
 }
 tick();
