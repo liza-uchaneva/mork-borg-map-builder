@@ -168,6 +168,19 @@ function updateInspectorCameras() {
   sideCam.updateMatrixWorld(true);
 }
 
+function rectForInset(el: HTMLElement) {
+  const body = el.querySelector(".inset__body") as HTMLElement | null;
+  const r = (body ?? el).getBoundingClientRect();
+
+  // Three.js viewport/scissor считают от нижнего левого угла,
+  // а DOM getBoundingClientRect() — от верхнего левого.
+  const x = Math.floor(r.left);
+  const y = Math.floor(window.innerHeight - r.bottom);
+  const w = Math.floor(r.width);
+  const h = Math.floor(r.height);
+
+  return { x, y, w, h };
+}
 
 // -------------------- World --------------------
 const ground = buildGround(scene, cfg.gridSize);
@@ -373,21 +386,9 @@ function placeObject() {
 let lastPlaced: THREE.Object3D | null = null;
 
 function getFocusObject(): THREE.Object3D | null {
-  // если есть ховер — следим за ghost (он показывает текущую позицию размещения)
   if (!isPlayerMode && hover.hasHover) return ghost;
-
-  // иначе — за последним поставленным объектом
   return lastPlaced;
 }
-
-function getFocusPoint(out = new THREE.Vector3()): THREE.Vector3 {
-  const obj = getFocusObject();
-  if (!obj) return out.set(0, 0, 0);
-
-  obj.getWorldPosition(out);
-  return out;
-}
-
 // -------------------- Hover (pointer move) --------------------
 renderer.domElement.addEventListener("pointermove", (ev: PointerEvent) => {
   if (isPlayerMode) return;
@@ -416,6 +417,33 @@ renderer.domElement.addEventListener("pointerdown", (ev: PointerEvent) => {
 
   if (ev.button === 2) {
     deleteClickedObject(ev, renderer.domElement, raycaster, mouseNDC, camera, placed);
+  }
+});
+
+// -------------------- Hide cameras --------------------
+const insetTop = document.getElementById("insetTop") as HTMLElement | null;
+const insetSide = document.getElementById("insetSide") as HTMLElement | null;
+
+let topCollapsed = false;
+let sideCollapsed = false;
+
+document.addEventListener("click", (e) => {
+  const btn = (e.target as HTMLElement).closest<HTMLButtonElement>("[data-collapse]");
+  if (!btn) return;
+
+  const kind = btn.dataset.collapse;
+  if (kind === "top" && insetTop) {
+    topCollapsed = !topCollapsed;
+    insetTop.classList.toggle("is-collapsed", topCollapsed);
+    btn.setAttribute("aria-expanded", String(!topCollapsed));
+    btn.textContent = topCollapsed ? "+" : "–";
+  }
+
+  if (kind === "side" && insetSide) {
+    sideCollapsed = !sideCollapsed;
+    insetSide.classList.toggle("is-collapsed", sideCollapsed);
+    btn.setAttribute("aria-expanded", String(!sideCollapsed));
+    btn.textContent = sideCollapsed ? "+" : "–";
   }
 });
 
@@ -511,23 +539,28 @@ resize();
 // -------------------- Loop --------------------
 function tick() {
   controls.update();
-  updateInspectorCameras();
 
-  // FULL render (один раз!)
-  renderer.setViewport(0, 0, app.clientWidth, app.clientHeight);
+  // --- FULL SCENE ---
   renderer.setScissorTest(false);
+  renderer.setViewport(0, 0, app.clientWidth, app.clientHeight);
   renderer.render(scene, camera);
 
-  // Insets
-  const insetW = 220;
-  const insetH = 160;
-  const pad = 12;
+  // --- INSPECTORS (ТОЛЬКО НЕ В PLAYER MODE) ---
+  if (!isPlayerMode) {
+    updateInspectorCameras();
 
-  renderInset(topCam, pad, pad, insetW, insetH, 0x102018); // bottom-left
-  renderInset(sideCam, app.clientWidth - insetW - pad, pad, insetW, insetH, 0x201010); // bottom-right
+    const W = app.clientWidth;
+    const H = app.clientHeight;
 
-  // важно: выключить scissor после inset’ов
-  renderer.setScissorTest(false);
+    const insetW = Math.floor(Math.max(180, Math.min(W * 0.26, 320)));
+    const insetH = Math.floor(insetW * (160 / 220));
+    const pad = Math.floor(Math.max(10, Math.min(W * 0.015, 18)));
+ 
+    renderInset(topCam, W - insetW - pad, H - (insetH + pad) * 2, insetW, insetH, 0x102018);
+    renderInset(sideCam, W - insetW - pad, H - insetH - pad, insetW, insetH, 0x201010);
+
+    renderer.setScissorTest(false);
+  }
 
   requestAnimationFrame(tick);
 }

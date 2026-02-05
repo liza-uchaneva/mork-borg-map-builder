@@ -17,39 +17,59 @@
       </button>
 
       <div id="editorControls">
-        <div>
-          <label>
-            Shape
-            <select id="shape">
-              <option value="box">Box</option>
-              <option value="sphere">Sphere</option>
-              <option value="cone">Cone</option>
-              <option value="cylinder">Cylinder</option>
-              <option value="pyramid">Pyramid</option>
-            </select>
-          </label>
-        </div>
+        <details class="ec-section">
+          <summary class="ec-summary">
+            <span class="ec-title">Shape</span>
+            <span class="ec-chev" aria-hidden="true"></span>
+          </summary>
 
-        <div>
+          <div class="ec-body">
+            <label>
+              <select id="shape">
+                <option value="box">Box</option>
+                <option value="sphere">Sphere</option>
+                <option value="cone">Cone</option>
+                <option value="cylinder">Cylinder</option>
+                <option value="pyramid">Pyramid</option>
+              </select>
+            </label>
+          </div>
+        </details>
+
+        <details class="ec-section">
+          <summary class="ec-summary">
+            <span class="ec-title">Size</span>
+            <span class="ec-chev" aria-hidden="true"></span>
+          </summary>
+
+          <div class="ec-body">
             <div class="range-row">
-            <span class="tag">W</span>
-            <input id="w" class="range-input" type="range" min="1" max="100" value="3" />
-            <output id="wVal">3</output>
-          </div>
+              <span class="tag">W</span>
+              <input id="w" class="range-input" type="range" min="1" max="100" value="3" />
+              <output id="wVal">3</output>
+            </div>
 
-          <div class="range-row">
-            <span class="tag">D</span>
-            <input id="d" class="range-input" type="range" min="1" max="100" value="3" />
-            <output id="dVal">3</output>
-          </div>
+            <div class="range-row">
+              <span class="tag">D</span>
+              <input id="d" class="range-input" type="range" min="1" max="100" value="3" />
+              <output id="dVal">3</output>
+            </div>
 
-          <div class="range-row">
-            <span class="tag">H</span>
-            <input id="h" class="range-input" type="range" min="1" max="100" value="2" />
-            <output id="hVal">2</output>
+            <div class="range-row">
+              <span class="tag">H</span>
+              <input id="h" class="range-input" type="range" min="1" max="100" value="2" />
+              <output id="hVal">2</output>
+            </div>
           </div>
-        </div>
-        <div>
+        </details>
+
+        <details class="ec-section">
+          <summary class="ec-summary">
+            <span class="ec-title">Material</span>
+            <span class="ec-chev" aria-hidden="true"></span>
+          </summary>
+
+          <div class="ec-body">
             <label>
               Style
               <select id="style">
@@ -58,47 +78,55 @@
                 <option value="solidWire">Solid + Wireframe</option>
               </select>
             </label>
-        </div>
-        <div>
+
             <label>
               Color
               <input id="color" type="color" value="#8a8a9a" />
             </label>
-        </div>
-
-        <div>
-          <div class="range-row">
-            <span class="tag">RX</span>
-            <input id="rx" class="range-input" type="range" min="0" max="360" value="0" />
-            <output id="rxVal">0</output>
           </div>
+        </details>
 
-          <div class="range-row">
-            <span class="tag">RY</span>
-            <input id="ry" class="range-input" type="range" min="0" max="360" value="0" />
-            <output id="ryVal">0</output>
+        <details class="ec-section">
+          <summary class="ec-summary">
+            <span class="ec-title">Rotation</span>
+            <span class="ec-chev" aria-hidden="true"></span>
+          </summary>
+
+          <div class="ec-body">
+            <div class="range-row">
+              <span class="tag">RX</span>
+              <input id="rx" class="range-input" type="range" min="0" max="360" value="0" />
+              <output id="rxVal">0</output>
+            </div>
+
+            <div class="range-row">
+              <span class="tag">RY</span>
+              <input id="ry" class="range-input" type="range" min="0" max="360" value="0" />
+              <output id="ryVal">0</output>
+            </div>
+
+            <div class="range-row">
+              <span class="tag">RZ</span>
+              <input id="rz" class="range-input" type="range" min="0" max="360" value="0" />
+              <output id="rzVal">0</output>
+            </div>
           </div>
-
-          <div class="range-row">
-            <span class="tag">RZ</span>
-            <input id="rz" class="range-input" type="range" min="0" max="360" value="0" />
-            <output id="rzVal">0</output>
-          </div>
-        </div>
-        </div>
-        <!-- <div id="insetFrames">
-          <div id="insetTop" class="inset-frame inset-top"><span>TOP</span></div>
-          <div id="insetSide" class="inset-frame inset-side"><span>SIDE</span></div>
-        </div> -->
-
-      <div id="saved">
-        <h4>Saved maps</h4>
-        <button id="saveMap">Save current map</button>
-        <div id="savedList"></div>
+        </details>
       </div>
-    </div>
+        
+      <details id="saved" class="ec-section">
+        <summary class="ec-summary">
+          <span class="ec-title">Saved maps</span>
+          <span class="ec-chev" aria-hidden="true"></span>
+        </summary>
 
-    <!-- <div id="instructions">
+        <div class="ec-body">
+          <button id="saveMap">Save current map</button>
+          <div id="savedList"></div>
+        </div>
+      </details>
+    </div>
+    <div id="instructions">
       <h3>Controls</h3>
       <ul>
         <li><b>LEFT CLICK</b> — place object</li>
@@ -108,7 +136,7 @@
         <li><b>Q / E</b> — move object up / down</li>
         <li><b>SAVE</b> — store current map in your browser</li>
       </ul>
-    </div> -->
+    </div>
 
     <!-- tiny helper so the numbers update next to the sliders -->
     <script>

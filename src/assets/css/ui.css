@@ -1,34 +1,50 @@
-#ui { 
-  position: fixed; 
+/* =========================================================
+   UI PANEL
+   ========================================================= */
+
+#ui {
+  position: fixed;
   z-index: 100001;
-  display: flex; 
-  flex-direction: column; 
-  top: 12px; 
-  left: 12px; 
-  width: 260px; 
-  padding: 12px; 
-  border-radius: 10px; 
-  background: #FFFFFF; 
-  color: #2E2E2E; 
-  font-size: 13px; 
-  backdrop-filter: blur(6px); 
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4); 
-  user-select: none; 
+  display: flex;
+  flex-direction: column;
+
+  top: 12px;
+  left: 12px;
+  width: 260px;
+
+  padding: 12px;
+  border-radius: 10px;
+
+  background: #ffffff;
+  color: #2e2e2e;
+
+  font-size: 13px;
+  backdrop-filter: blur(6px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+
+  user-select: none;
+  max-height: 95vh;
 }
+
+/* =========================================================
+   LABELS
+   ========================================================= */
 
 #ui label {
   display: grid;
   gap: 6px;
   margin: 0;
-}
 
-/* The label text itself (Shape, Style, Color…) */
-#ui label {
+  /* The label text itself (Shape, Style, Color…) */
   font-weight: 900;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   font-size: 11px;
 }
+
+/* =========================================================
+   FORM FIELDS
+   ========================================================= */
 
 /* Inputs that should look like “form fields” */
 #ui select,
@@ -92,7 +108,6 @@
   height: 22px;
 
   border-radius: 10px;
-
   background: var(--ink);
   color: var(--paper);
 
@@ -107,7 +122,6 @@
   place-items: center;
 
   border-radius: 20px;
-
   border: var(--stroke) solid var(--ink);
   background: var(--paper2);
 
@@ -175,6 +189,7 @@
 .range-input:hover::-webkit-slider-thumb {
   transform: scale(1.06);
 }
+
 .range-input:active::-webkit-slider-thumb {
   transform: scale(1.1);
 }
@@ -185,23 +200,31 @@
   background: rgba(0, 0, 0, 0.12);
   border-radius: 999px;
 }
-#editorControls{
+
+/* =========================================================
+   EDITOR CONTROLS (legacy block)
+   ========================================================= */
+
+#editorControls {
   display: flex;
   flex-direction: column;
+
   margin-top: 10px;
   padding-top: 12px;
+
   border-top: var(--stroke) solid var(--ink);
 }
-#editorControls > *{
+
+#editorControls > * {
   margin-top: 5px;
 }
+
 /* =========================================================
-   SAVED MAPS SECTION
+   SAVED MAPS SECTION (legacy block)
    ========================================================= */
 
 #saved {
   margin-top: 6px;
-  padding-top: 12px;
   border-top: var(--stroke) solid var(--ink);
 }
 
@@ -242,7 +265,7 @@
   gap: 8px;
 
   max-height: 220px;
-  overflow-y: auto;
+  overflow-y: scroll;
   padding-right: 4px;
 }
 
@@ -358,4 +381,105 @@
 #instructions li {
   margin-bottom: 6px;
   font-size: 13px;
+}
+
+/* =========================================================
+   COLLAPSIBLE EDITOR SECTIONS (details/summary)
+   ========================================================= */
+
+#editorControls {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* remove default triangle marker */
+.ec-section > summary {
+  list-style: none;
+}
+
+.ec-section > summary::-webkit-details-marker {
+  display: none;
+}
+
+.ec-section {
+  border: 2px solid #2e2e2e;
+  border-radius: 12px;
+  background: #f0f1f3;
+  overflow: hidden;
+}
+
+/* header row */
+.ec-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 5px;
+
+  padding: 5px 5px;
+  cursor: pointer;
+  user-select: none;
+
+  background: #d3d7da;
+  border-bottom: 2px solid #2e2e2e;
+}
+
+.ec-title {
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  font-size: 11px;
+  text-transform: uppercase;
+  color: #2e2e2e;
+}
+
+/* chevron */
+.ec-chev {
+  width: 22px;
+  height: 22px;
+  border: 2px solid #2e2e2e;
+  border-radius: 8px;
+  background: #ffffff;
+
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.ec-chev::before,
+.ec-chev::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 10px;
+  height: 2px;
+  background: #2e2e2e;
+  transform: translate(-50%, -50%);
+  border-radius: 2px;
+}
+
+/* plus sign when closed (show vertical bar) */
+.ec-chev::after {
+  transform: translate(-50%, -50%) rotate(90deg);
+}
+
+/* when open -> minus (hide vertical bar) */
+.ec-section[open] .ec-chev::after {
+  opacity: 0;
+}
+
+/* body */
+.ec-body {
+  padding: 10px 10px 12px;
+  background: #ffffff;
+}
+
+/* focus ring on summary */
+.ec-summary:focus-visible {
+  outline: 2px solid #2e2e2e;
+  outline-offset: 2px;
+}
+
+/* nice hover */
+.ec-summary:hover {
+  filter: brightness(0.98);
 }
