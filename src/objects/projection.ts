@@ -1,6 +1,6 @@
 import * as THREE from "three";
-import type { UIState } from "./types";
-import { degToRad } from "./placement";
+import type { UIState } from "../utils/types";
+import { degToRad } from "../utils/placement";
 
 function isRound(shape: UIState["shape"]) {
   return shape === "sphere" || shape === "cone" || shape === "cylinder";

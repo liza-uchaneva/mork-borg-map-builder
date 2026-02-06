@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
-import type { AppConfig } from './types';
+import type { AppConfig } from '../utils/types';
 
 export function createScene(): THREE.Scene {
   const scene = new THREE.Scene();

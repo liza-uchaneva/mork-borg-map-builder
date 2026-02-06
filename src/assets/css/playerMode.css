@@ -86,3 +86,6 @@ body.player-mode #editorControls {
 body.player-mode #instructions {
   display: none;
 }
+body.player-mode #saveMap{
+  display: none;
+}

@@ -1,4 +1,4 @@
-import type { ShapeId, StyleId, UIRefs, UIState } from "./types";
+import type { ShapeId, StyleId, UIRefs, UIState } from "../utils/types";
 
 function qs<T extends Element>(sel: string) {
   const el = document.querySelector<T>(sel);

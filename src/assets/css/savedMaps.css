@@ -1,0 +1,124 @@
+/* =========================================================
+   SAVED MAPS SECTION (legacy block)
+   ========================================================= */
+
+#saved {
+  margin-top: 6px;
+  border-top: var(--stroke) solid var(--ink);
+}
+
+/* Title like “SKILLS”, “EQUIPMENT” */
+#saved h4 {
+  margin: 0 0 10px 0;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+#saveMap {
+  width: 100%;
+  padding: 10px 12px;
+  margin: 0 0 10px 0;
+
+  border-radius: 14px;
+  border: var(--stroke) solid var(--ink);
+
+  background: var(--paper2);
+  color: var(--ink);
+
+  cursor: pointer;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-size: 12px;
+}
+
+#saveMap:hover {
+  background: var(--shade);
+}
+
+#savedList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  max-height: 220px;
+  overflow-y: scroll;
+  padding-right: 4px;
+}
+
+/* Empty state */
+.saved-empty {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* One saved item row */
+.saved-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  padding: 10px 12px;
+  border-radius: 14px;
+
+  background: var(--paper2);
+  border: var(--stroke) solid var(--ink);
+}
+
+/* Left side text */
+.saved-meta {
+  min-width: 0;
+  flex: 1;
+}
+
+.saved-name {
+  font-size: 13px;
+  font-weight: 900;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.saved-sub {
+  font-size: 11px;
+  color: var(--muted);
+  font-family: var(--font-familyLight);
+}
+
+/* Buttons */
+.saved-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.saved-actions .btn {
+  padding: 6px 10px;
+  font-size: 11px;
+
+  border-radius: 12px;
+  border: var(--stroke) solid var(--ink);
+
+  background: var(--paper);
+  color: var(--ink);
+
+  cursor: pointer;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.saved-actions .btn:hover {
+  background: var(--shade);
+}
+
+.saved-actions .btn-del {
+  /* subtle “danger” without breaking monochrome */
+  background: #fff;
+}
+
+.saved-actions .btn-del:hover {
+  background: rgba(255, 80, 80, 0.18);
+}

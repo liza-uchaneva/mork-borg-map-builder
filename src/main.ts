@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import "./style.css";
-import { VcrOverlay } from "./utils/vcrOverlay";
+import { VcrOverlay } from "./scenes/vcrOverlay";
+import { createInspectorCameras } from "./scenes/inspectorCameras.ts";
 
 import {
   createScene,
@@ -9,9 +10,9 @@ import {
   createCamera,
   createControls,
   setupIsoCamera,
-} from "./utils/scene";
+} from "./scenes/scene";
 
-import { buildGeometry } from "./utils/editor";
+import { buildGeometry, disposeObject3D } from "./utils/editor";
 
 import {
   getUIRefs,
@@ -20,7 +21,7 @@ import {
   onUIChange,
   getAppRoot,
   syncUIOutputs,
-} from "./utils/ui";
+} from "./ui/ui";
 
 import {
   savePlacedToLocalStorage,
@@ -33,15 +34,15 @@ import {
 
 import { buildStyledObject, calcCenterY, applyRotation } from "./utils/placement";
 
-import { createProjection, rebuildProjection } from "./utils/projection";
-import { createGhost, rebuildGhost } from "./utils/ghost";
+import { createProjection, rebuildProjection } from "./objects/projection";
+import { createGhost, rebuildGhost } from "./objects/ghost";
 
 import {
   createRay,
   ndcFromEvent,
   deleteClickedObject,
   updateHoverFromGroundHit,
-} from "./utils/input";
+} from "./utils/picking.ts";
 
 import type { AppConfig, HoverState } from "./utils/types";
 
@@ -71,116 +72,7 @@ const target = new THREE.Vector3(0, 12, 0);
 setupIsoCamera(camera, target, cfg);
 const controls = createControls(camera, renderer.domElement, target);
 
-// -------------------- Extra “inspector” cameras --------------------
-
-const topCam = new THREE.PerspectiveCamera(35, 1, 0.1, 2000);
-topCam.up.set(0, 0, -1); 
-
-const sideCam = new THREE.PerspectiveCamera(35, 1, 0.1, 2000);
-sideCam.up.set(0, 1, 0);
-function renderInset(
-  cameraInset: THREE.PerspectiveCamera,
-  x: number,
-  y: number,
-  w: number,
-  h: number,
-  clearColor: number
-) {
-  cameraInset.aspect = w / h;
-  cameraInset.updateProjectionMatrix();
-
-  renderer.setViewport(x, y, w, h);
-  renderer.setScissor(x, y, w, h);
-  renderer.setScissorTest(true);
-
-  renderer.setClearColor(clearColor, 1);
-  renderer.clear(true, true, true);
-
-  renderer.render(scene, cameraInset);
-}
-const tmpBox = new THREE.Box3();
-const tmpSize = new THREE.Vector3();
-const tmpCenter = new THREE.Vector3();
-
-function getFocusBounds() {
-  const obj = getFocusObject();
-
-  if (!obj) {
-    return {
-      center: tmpCenter.set(0, 0, 0),
-      radius: 10, 
-    };
-  }
-
-  obj.updateMatrixWorld(true);
-
-  tmpBox.setFromObject(obj);
-
-  if (!isFinite(tmpBox.min.x) || tmpBox.isEmpty()) {
-    obj.getWorldPosition(tmpCenter);
-    return { center: tmpCenter, radius: 10 };
-  }
-
-  tmpBox.getCenter(tmpCenter);
-  tmpBox.getSize(tmpSize);
-  const radius = tmpSize.length() * 0.5;
-
-  return { center: tmpCenter, radius: Math.max(radius, 0.5) };
-}
-
-function distanceToFitSphere(radius: number, fovDeg: number, padding = 1.2) {
-  const fov = THREE.MathUtils.degToRad(fovDeg);
-  return (radius * padding) / Math.tan(fov * 0.5);
-}
-function updateInspectorCameras() {
-  const { center, radius } = getFocusBounds();
-  const look = new THREE.Vector3(center.x, center.y + radius * 0.15, center.z);
-
-  // ---------- TOP CAMERA ----------
-  const topDist = distanceToFitSphere(radius, topCam.fov, 1.25);
-
-  topCam.position.set(look.x, look.y + topDist, look.z);
-  topCam.up.set(0, 0, -1);
-  topCam.near = Math.max(0.1, topDist - radius * 4);
-  topCam.far = topDist + radius * 8 + 500;
-  topCam.lookAt(look);
-  topCam.updateProjectionMatrix();
-  topCam.updateMatrixWorld(true);
-
-  // ---------- SIDE CAMERA ----------
-  // Камера смотрит сбоку, но чуть сверху (чтобы видеть верх объекта и землю).
-  const sideDist = distanceToFitSphere(radius, sideCam.fov, 1.35);
-
-  // направление "сбоку" — по +X (можешь сменить на +Z)
-  const dir = new THREE.Vector3(1, 0, 0);
-
-  // боковая камера: чуть выше, чем центр
-  const sideHeight = radius * 0.6 + 2;
-
-  sideCam.position.copy(look).addScaledVector(dir, sideDist);
-  sideCam.position.y += sideHeight;
-
-  sideCam.up.set(0, 1, 0);
-  sideCam.near = Math.max(0.1, sideDist - radius * 4);
-  sideCam.far = sideDist + radius * 8 + 500;
-  sideCam.lookAt(look);
-  sideCam.updateProjectionMatrix();
-  sideCam.updateMatrixWorld(true);
-}
-
-function rectForInset(el: HTMLElement) {
-  const body = el.querySelector(".inset__body") as HTMLElement | null;
-  const r = (body ?? el).getBoundingClientRect();
-
-  // Three.js viewport/scissor считают от нижнего левого угла,
-  // а DOM getBoundingClientRect() — от верхнего левого.
-  const x = Math.floor(r.left);
-  const y = Math.floor(window.innerHeight - r.bottom);
-  const w = Math.floor(r.width);
-  const h = Math.floor(r.height);
-
-  return { x, y, w, h };
-}
+const inspector = createInspectorCameras({ scene, renderer, getFocusObject });
 
 // -------------------- World --------------------
 const ground = buildGround(scene, cfg.gridSize);
@@ -362,6 +254,8 @@ function applyGhostAndProjection() {
   projection.visible = true;
 }
 
+const placedHistory: THREE.Object3D[] = [];
+
 function placeObject() {
   if (isPlayerMode) return;
   if (!hover.hasHover) return;
@@ -379,9 +273,24 @@ function placeObject() {
   applyRotation(obj, uiState.rotation);
   tagPlacedObject(obj, uiState);
 
-  placed.add(obj);
+    placed.add(obj);
+
+  placedHistory.push(obj);
   lastPlaced = obj;
 }
+function undoLastPlacement() {
+  if (isPlayerMode) return;
+
+  const obj = placedHistory.pop();
+  if (!obj) return;
+
+  placed.remove(obj);
+  disposeObject3D(obj);
+
+  // обновить lastPlaced на новый “последний” в стеке
+  lastPlaced = placedHistory.length ? placedHistory[placedHistory.length - 1] : null;
+}
+
 
 let lastPlaced: THREE.Object3D | null = null;
 
@@ -459,6 +368,14 @@ window.addEventListener("keydown", (ev: KeyboardEvent) => {
     return;
   }
 
+  // Undo: Ctrl+Z / Cmd+Z
+  if ((ev.ctrlKey || ev.metaKey) && ev.code === "KeyZ") {
+    ev.preventDefault();
+    undoLastPlacement();
+    applyGhostAndProjection();
+    return;
+  }
+
   // Load: Ctrl/Cmd+O
   if ((ev.ctrlKey || ev.metaKey) && ev.code === "KeyO") {
     ev.preventDefault();
@@ -482,6 +399,8 @@ window.addEventListener("keydown", (ev: KeyboardEvent) => {
     }
 
     loadTemplateIntoPlaced(tpl, placed);
+    placedHistory.length = 0;
+    lastPlaced = null;
     renderSavedList();
     applyGhostAndProjection();
     return;
@@ -545,9 +464,9 @@ function tick() {
   renderer.setViewport(0, 0, app.clientWidth, app.clientHeight);
   renderer.render(scene, camera);
 
-  // --- INSPECTORS (ТОЛЬКО НЕ В PLAYER MODE) ---
+  // --- INSPECTORS (ONLY WHEN NOT IN PLAYER MODE) ---
   if (!isPlayerMode) {
-    updateInspectorCameras();
+    inspector.update();
 
     const W = app.clientWidth;
     const H = app.clientHeight;
@@ -555,10 +474,24 @@ function tick() {
     const insetW = Math.floor(Math.max(180, Math.min(W * 0.26, 320)));
     const insetH = Math.floor(insetW * (160 / 220));
     const pad = Math.floor(Math.max(10, Math.min(W * 0.015, 18)));
- 
-    renderInset(topCam, W - insetW - pad, H - (insetH + pad) * 2, insetW, insetH, 0x102018);
-    renderInset(sideCam, W - insetW - pad, H - insetH - pad, insetW, insetH, 0x201010);
 
+    inspector.renderInset(
+      inspector.topCam,
+      W - insetW - pad,
+      H - (insetH + pad) * 2,
+      insetW,
+      insetH,
+      0x102018
+    );
+
+    inspector.renderInset(
+      inspector.sideCam,
+      W - insetW - pad,
+      H - insetH - pad,
+      insetW,
+      insetH,
+      0x201010
+    );
     renderer.setScissorTest(false);
   }
 
