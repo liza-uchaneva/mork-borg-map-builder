@@ -1,7 +1,9 @@
 import * as THREE from "three";
-import "./style.css";
+import "./assets/style.css";
 import { VcrOverlay } from "./scenes/vcrOverlay";
 import { createInspectorCameras } from "./scenes/inspectorCameras.ts";
+import { exportMapToFile, importMapFromFile } from "./utils/mapFile";
+
 
 import {
   createScene,
@@ -426,6 +428,30 @@ window.addEventListener("keydown", (ev: KeyboardEvent) => {
     ev.preventDefault();
     currentLevel = Math.min(cfg.maxLevels, currentLevel + 1);
     applyGhostAndProjection();
+  }
+});
+// -------------------- Save JSON Button --------------------
+
+const exportBtn = document.querySelector<HTMLButtonElement>("#exportMap");
+const importInput = document.querySelector<HTMLInputElement>("#importMap");
+
+exportBtn?.addEventListener("click", () => {
+  exportMapToFile(placed, { title: "mork-map" });
+});
+
+importInput?.addEventListener("change", async () => {
+  const f = importInput.files?.[0];
+  if (!f) return;
+
+  try {
+    await importMapFromFile(f, placed);
+    renderSavedList();       // optional (if you want the list to refresh)
+    applyGhostAndProjection(); // optional
+  } catch (e) {
+    console.error(e);
+    alert((e as Error).message || "Failed to import map.");
+  } finally {
+    importInput.value = ""; // allow importing same file again
   }
 });
 

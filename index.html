@@ -15,7 +15,6 @@
       <button id="playerModeBtn" type="button">
         Player mode: OFF
       </button>
-
       <div id="editorControls">
         <details class="ec-section">
           <summary class="ec-summary">
@@ -116,12 +115,17 @@
         
       <details id="saved" class="ec-section">
         <summary class="ec-summary">
-          <span class="ec-title">Saved maps</span>
+          <span class="ec-title">Maps</span>
           <span class="ec-chev" aria-hidden="true"></span>
         </summary>
 
         <div class="ec-body">
-          <button id="saveMap">Save current map</button>
+          <label>
+            Import from file
+            <input id="importMap" type="file" accept="application/json,.json" />
+          </label>
+          <button id="exportMap" type="button">Export to file</button>
+          <button id="saveMap">Save current state</button>
           <div id="savedList"></div>
         </div>
       </details>
@@ -135,7 +139,6 @@
         <li><b>SCROLL</b> — zoom</li>
         <li><b>CTRL Z</b> — remove last placed object</li>
         <li><b>Q / E</b> — move object up / down</li>
-        <li><b>SAVE</b> — store current map in your browser</li>
       </ul>
     </div>
 

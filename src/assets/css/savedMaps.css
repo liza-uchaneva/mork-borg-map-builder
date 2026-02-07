@@ -122,3 +122,94 @@
 .saved-actions .btn-del:hover {
   background: rgba(255, 80, 80, 0.18);
 }
+
+/* remove default triangle marker */
+.ec-section > summary {
+  list-style: none;
+}
+
+.ec-section > summary::-webkit-details-marker {
+  display: none;
+}
+
+.ec-section {
+  border: 2px solid #2e2e2e;
+  border-radius: 12px;
+  background: #f0f1f3;
+  overflow: hidden;
+}
+
+/* header row */
+.ec-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 5px;
+
+  padding: 5px 5px;
+  cursor: pointer;
+  user-select: none;
+
+  background: #d3d7da;
+  border-bottom: 2px solid #2e2e2e;
+}
+
+.ec-title {
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  font-size: 11px;
+  text-transform: uppercase;
+  color: #2e2e2e;
+}
+
+/* chevron */
+.ec-chev {
+  width: 22px;
+  height: 22px;
+  border: 2px solid #2e2e2e;
+  border-radius: 8px;
+  background: #ffffff;
+
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.ec-chev::before,
+.ec-chev::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 10px;
+  height: 2px;
+  background: #2e2e2e;
+  transform: translate(-50%, -50%);
+  border-radius: 2px;
+}
+
+/* plus sign when closed (show vertical bar) */
+.ec-chev::after {
+  transform: translate(-50%, -50%) rotate(90deg);
+}
+
+/* when open -> minus (hide vertical bar) */
+.ec-section[open] .ec-chev::after {
+  opacity: 0;
+}
+
+/* body */
+.ec-body {
+  padding: 10px 10px 12px;
+  background: #ffffff;
+}
+
+/* focus ring on summary */
+.ec-summary:focus-visible {
+  outline: 2px solid #2e2e2e;
+  outline-offset: 2px;
+}
+
+/* nice hover */
+.ec-summary:hover {
+  filter: brightness(0.98);
+}

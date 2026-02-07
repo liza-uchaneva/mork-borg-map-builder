@@ -63,11 +63,10 @@ function uid(): string {
  * We store per-object params in userData when placing:
  * obj.userData.editor = { shape, style, colorHex, w,d,h, rotation }
  */
-function extractEditorData(obj: THREE.Object3D): UIState | null {
+export function extractEditorData(obj: THREE.Object3D): UIState | null {
   const d = obj.userData?.editor;
   if (!d) return null;
 
-  // Light validation / defaults
   return {
     shape: d.shape,
     style: d.style,
