@@ -1,9 +1,8 @@
 /* --- Player mode button --- */
 #playerModeBtn {
   width: 100%;
-  margin: 0;
 
-  padding: 10px 12px;
+  padding: 10px;
 
   border-radius: 14px;
   border: var(--stroke) solid var(--ink);
@@ -69,17 +68,9 @@
 
   background-size: 100% 2px, 3px 100%;
 }
-/* .player-overlay .scanlines {
-  animation: scanline-drift 10s linear infinite;
-}
-
-@keyframes scanline-drift {
-  from { background-position: 0 0, 0 0; }
-  to   { background-position: 0 120px, 0 0; }
-} */
 
 /* Player mode: keep Player button + Saved maps, hide everything else */
-body.player-mode #editorControls {
+body.player-mode #editorControls{
   display: none;
 }
 
@@ -87,5 +78,8 @@ body.player-mode #instructions {
   display: none;
 }
 body.player-mode #saveMap{
+  display: none;
+}
+body.player-mode #maps-row{
   display: none;
 }

@@ -15,6 +15,27 @@
       <button id="playerModeBtn" type="button">
         Player mode: OFF
       </button>
+      <div class="maps-actions">
+        <button id="saveMap" class="maps-btn maps-btn--primary">Save current state</button>
+        <details id="saved" class="ec-section">
+          <summary class="ec-summary">
+            <span class="ec-title">Maps</span>
+            <span class="ec-chev" aria-hidden="true"></span>
+          </summary>
+
+          <div class="ec-body">
+            <div id="savedList"></div>
+          </div>
+        </details>
+        <div id="maps-row" class="maps-row">
+          <button id="exportMap" class="maps-btn" type="button"> Export</button>
+
+          <label class="maps-btn maps-file">
+            Import
+            <input id="importMap" type="file" accept="application/json,.json" />
+          </label>
+        </div>
+      </div>
       <div id="editorControls">
         <details class="ec-section">
           <summary class="ec-summary">
@@ -70,7 +91,6 @@
 
           <div class="ec-body">
             <label>
-              Style
               <select id="style">
                 <option value="solid" selected>Solid</option>
                 <option value="wire">Wireframe</option>
@@ -79,7 +99,6 @@
             </label>
 
             <label>
-              Color
               <input id="color" type="color" value="#8a8a9a" />
             </label>
           </div>
@@ -112,23 +131,6 @@
           </div>
         </details>
       </div>
-        
-      <details id="saved" class="ec-section">
-        <summary class="ec-summary">
-          <span class="ec-title">Maps</span>
-          <span class="ec-chev" aria-hidden="true"></span>
-        </summary>
-
-        <div class="ec-body">
-          <label>
-            Import from file
-            <input id="importMap" type="file" accept="application/json,.json" />
-          </label>
-          <button id="exportMap" type="button">Export to file</button>
-          <button id="saveMap">Save current state</button>
-          <div id="savedList"></div>
-        </div>
-      </details>
     </div>
     <div id="instructions">
       <h3>Controls</h3>
