@@ -184,10 +184,15 @@ function renderSavedList() {
 
     const meta = document.createElement("div");
     meta.className = "saved-meta";
-    meta.innerHTML = `
-      <div class="saved-name">${t.title}</div>
-      <div class="saved-sub">${t.blocks.length} objects • ${formatDate(t.createdAt)}</div>
-    `;
+    const nameEl = document.createElement("div");
+    nameEl.className = "saved-name";
+    nameEl.textContent = t.title;
+
+    const subEl = document.createElement("div");
+    subEl.className = "saved-sub";
+    subEl.textContent = `${t.blocks.length} objects • ${formatDate(t.createdAt)}`;
+
+    meta.append(nameEl, subEl);
 
     const actions = document.createElement("div");
     actions.className = "saved-actions";
@@ -201,6 +206,7 @@ function renderSavedList() {
       if (!tpl) return;
 
       loadTemplateIntoPlaced(tpl, placed);
+      resetHistory();
 
       applyGhostAndProjection();
       renderSavedList();
@@ -257,6 +263,20 @@ function applyGhostAndProjection() {
 }
 
 const placedHistory: THREE.Object3D[] = [];
+let lastPlaced: THREE.Object3D | null = null;
+
+function resetHistory() {
+  placedHistory.length = 0;
+  lastPlaced = null;
+}
+
+function forgetObject(obj: THREE.Object3D) {
+  const i = placedHistory.indexOf(obj);
+  if (i !== -1) placedHistory.splice(i, 1);
+  if (lastPlaced === obj) {
+    lastPlaced = placedHistory.length ? placedHistory[placedHistory.length - 1] : null;
+  }
+}
 
 function placeObject() {
   if (isPlayerMode) return;
@@ -275,7 +295,7 @@ function placeObject() {
   applyRotation(obj, uiState.rotation);
   tagPlacedObject(obj, uiState);
 
-    placed.add(obj);
+  placed.add(obj);
 
   placedHistory.push(obj);
   lastPlaced = obj;
@@ -292,9 +312,6 @@ function undoLastPlacement() {
   // обновить lastPlaced на новый “последний” в стеке
   lastPlaced = placedHistory.length ? placedHistory[placedHistory.length - 1] : null;
 }
-
-
-let lastPlaced: THREE.Object3D | null = null;
 
 function getFocusObject(): THREE.Object3D | null {
   if (!isPlayerMode && hover.hasHover) return ghost;
@@ -321,13 +338,29 @@ renderer.domElement.addEventListener("pointermove", (ev: PointerEvent) => {
 renderer.domElement.addEventListener("contextmenu", (ev) => ev.preventDefault());
 
 // -------------------- Click / delete --------------------
+// Act on pointerup, and only if the pointer barely moved, so that
+// dragging to orbit (left) or pan (right) doesn't place/delete objects.
+const CLICK_MOVE_TOLERANCE_PX = 5;
+let pressStart: { x: number; y: number; button: number } | null = null;
+
 renderer.domElement.addEventListener("pointerdown", (ev: PointerEvent) => {
   if (isPlayerMode) return;
+  pressStart = { x: ev.clientX, y: ev.clientY, button: ev.button };
+});
+
+renderer.domElement.addEventListener("pointerup", (ev: PointerEvent) => {
+  const start = pressStart;
+  pressStart = null;
+  if (isPlayerMode || !start || start.button !== ev.button) return;
+
+  const moved = Math.hypot(ev.clientX - start.x, ev.clientY - start.y);
+  if (moved > CLICK_MOVE_TOLERANCE_PX) return;
 
   if (ev.button === 0) placeObject();
 
   if (ev.button === 2) {
-    deleteClickedObject(ev, renderer.domElement, raycaster, mouseNDC, camera, placed);
+    const removed = deleteClickedObject(ev, renderer.domElement, raycaster, mouseNDC, camera, placed);
+    if (removed) forgetObject(removed);
   }
 });
 
@@ -401,12 +434,13 @@ window.addEventListener("keydown", (ev: KeyboardEvent) => {
     }
 
     loadTemplateIntoPlaced(tpl, placed);
-    placedHistory.length = 0;
-    lastPlaced = null;
+    resetHistory();
     renderSavedList();
     applyGhostAndProjection();
     return;
   }
+
+  if (ev.code !== "KeyQ" && ev.code !== "KeyE") return;
 
   // Blur inputs so Q/E doesn't type into sliders/selects
   const active = document.activeElement;
@@ -445,8 +479,8 @@ importInput?.addEventListener("change", async () => {
 
   try {
     await importMapFromFile(f, placed);
-    renderSavedList();       // optional (if you want the list to refresh)
-    applyGhostAndProjection(); // optional
+    resetHistory();
+    applyGhostAndProjection();
   } catch (e) {
     console.error(e);
     alert((e as Error).message || "Failed to import map.");

@@ -37,12 +37,12 @@ export function deleteClickedObject(
   mouseNDC: THREE.Vector2,
   camera: THREE.Camera,
   placed: THREE.Group
-) {
+): THREE.Object3D | null {
   ndcFromEvent(ev, dom, mouseNDC);
   raycaster.setFromCamera(mouseNDC, camera);
 
   const hits = raycaster.intersectObjects(placed.children, true);
-  if (!hits.length) return;
+  if (!hits.length) return null;
 
   // Pick best candidate: higher style priority wins; if tie -> closer wins
   let bestObj: THREE.Object3D | null = null;
@@ -61,10 +61,11 @@ export function deleteClickedObject(
     }
   }
 
-  if (!bestObj) return;
+  if (!bestObj) return null;
 
   placed.remove(bestObj);
   disposeObject3D(bestObj);
+  return bestObj;
 }
 
 export function clampCenterToGround(x: number, z: number, s: UIState, half: number) {
